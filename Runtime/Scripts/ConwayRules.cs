@@ -1,6 +1,6 @@
 namespace ChanceGen
 {
-    public class ChanceGenerator
+    public struct ConwayRules
     {
         
     }
