@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7748464487964919409
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8458700872344117963}
+  - component: {fileID: 4495577752530389718}
+  m_Layer: 0
+  m_Name: Chance Generator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8458700872344117963
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7748464487964919409}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -4, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4495577752530389718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7748464487964919409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2dd3eb422d1f0a43bdb99eb03ab0605, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  size: 101
+  randomRoomChanceDecrease: 0.051
+  regenerateLimit: 8
+  shrinkLimit: 14
+  removeRules:
+    limitLTET: 0
+    limitGT: 6
+    actionChance: 0.32
+  addRules:
+    limitLTET: 5
+    limitGT: 2
+    actionChance: 0.22
+  specialRoomRules:
+    bossMaxSteps: 0
+    spawnMaxSteps: 6
+    chanceDecreasePerStep: 0.1
+  debugInfoSettings:
+    generationSpeed: 0
+    showWalk: 0
+    debugInfo: 0
+  customSeed: 
