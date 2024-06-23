@@ -1,7 +1,9 @@
 {
     "name": "Heroshrine.ChanceLevelGenerator.Editor",
     "rootNamespace": "ChanceGen.Editor",
-    "references": [],
+    "references": [
+        "GUID:44f07c5caed490446b1e5d522dd1a63f"
+    ],
     "includePlatforms": [
         "Editor"
     ],

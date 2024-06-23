@@ -25,7 +25,7 @@ namespace OLD
 
         private Iterator iterator;
 
-        // TODO: make way to create generator
+        // TODO: make way to create generator in new ChanceGenerator script
         private ChanceGenerator() { }
 
         /// <summary>
