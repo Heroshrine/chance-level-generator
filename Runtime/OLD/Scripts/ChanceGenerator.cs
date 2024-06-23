@@ -63,8 +63,11 @@ namespace OLD
         /// Starts a the coroutine that generates a level.
         /// </summary>
         /// <returns>True if generation started, false if not.</returns>
-        public bool Generate(GenerationInfo generationInfo, ConwayRules removeRules, ConwayRules addRules,
-            SpecialRoomRules specialRoomRules, DebugInfoSettings debugInfoSettings)
+        public bool Generate(GenerationInfo generationInfo,
+            ConwayRules removeRules,
+            ConwayRules addRules,
+            SpecialRoomRules specialRoomRules,
+            DebugInfoSettings debugInfoSettings)
         {
             if (isGenerating)
                 return false;
@@ -135,7 +138,8 @@ namespace OLD
                     }
                     else if ((gnr <= addRules.LimitLTET && gnr > addRules.LimitGT)
                              && rooms[i, j] == null
-                             && random.NextFloat() <= addRules.ActionChance)
+                             && random.NextFloat()
+                             <= addRules.ActionChance) // TODO: convert to just less than in rewrite
                     {
                         rooms[i, j] = SpawnRoom(i, j);
                         Log($"Added By AddRooms: {rooms[i, j]}");
