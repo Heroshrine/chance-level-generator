@@ -25,7 +25,7 @@ namespace OLD
 
         private Iterator iterator;
 
-        // TODO: make way to create generator in new ChanceGenerator script
+        // DONE: make way to create generator in new ChanceGenerator script
         private ChanceGenerator() { }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace OLD
         {
             Log($"Starting generation with seed: {generationInfo.seed}", DebugInfoSettings.DebugInfo.Minimal);
             Log($"generationInfo.Side: {generationInfo.Side}");
-            Log($"generationInfo.Size: {generationInfo.Size}");
+            Log($"generationInfo.SideSize: {generationInfo.Size}");
 
             isGenerating = true;
             retry:
@@ -126,7 +126,7 @@ namespace OLD
 
                     if ((gnr <= removeRules.LimitLTET || gnr > removeRules.LimitGT)
                         && !(i == generationInfo.Side / 2 && j == generationInfo.Side / 2)
-                        && random.NextFloat() <= removeRules.ActionChance
+                        && random.NextFloat() <= removeRules.ActionChance // DONE: convert to just less than in rewrite
                         && rooms[i, j] != null)
                     {
                         Object.Destroy(rooms[i, j].gameObject);
@@ -139,7 +139,7 @@ namespace OLD
                     else if ((gnr <= addRules.LimitLTET && gnr > addRules.LimitGT)
                              && rooms[i, j] == null
                              && random.NextFloat()
-                             <= addRules.ActionChance) // TODO: convert to just less than in rewrite
+                             <= addRules.ActionChance) // DONE: convert to just less than in rewrite
                     {
                         rooms[i, j] = SpawnRoom(i, j);
                         Log($"Added By AddRooms: {rooms[i, j]}");

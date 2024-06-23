@@ -3,9 +3,9 @@ namespace ChanceGen
     public struct WalkData
     {
         public int walkValue;
-        public int queued;
+        public bool queued;
 
-        public WalkData(int walkValue, int queued)
+        public WalkData(int walkValue, bool queued)
         {
             this.walkValue = walkValue;
             this.queued = queued;

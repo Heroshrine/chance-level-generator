@@ -14,7 +14,8 @@ namespace ChanceGen
         public byte Selected { get; internal set; }
         public bool Invalid { get; internal set; }
 
-        public Memory<WalkData> walkData = new WalkData[2];
+        [HideInInspector] public bool markedForDeletion;
+        public readonly WalkData[] walkData = new WalkData[2];
         public int2 gridPosition;
 
         public RoomConnections connections;

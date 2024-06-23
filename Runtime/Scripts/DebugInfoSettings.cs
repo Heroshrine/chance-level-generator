@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace ChanceGen
 {
@@ -18,10 +19,11 @@ namespace ChanceGen
             DebuggingInfo = debugInfo;
         }
 
+        [Flags]
         public enum DebugInfo
         {
-            Minimal,
-            Full
+            Minimal = 1,
+            Full = 3
         }
     }
 }
