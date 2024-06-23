@@ -3,36 +3,39 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
-public class ChanceGenMono : MonoBehaviour
+namespace OLD
 {
-    public int size;
-    public float randomRoomChanceDecrease;
-    public int regenerateLimit;
-    public int shrinkLimit;
-
-    [Space] public ConwayRules removeRules;
-    public ConwayRules addRules;
-    public SpecialRoomRules specialRoomRules;
-    public DebugInfoSettings debugInfoSettings;
-
-    public string customSeed;
-
-    ChanceGenerator current;
-
-    public bool CurrentFinished => (current == null || !current.isGenerating);
-
-    //public void Stop() => current.Destroy();
-
-    public void Generate()
+    public class ChanceGenMono : MonoBehaviour
     {
-        if (CurrentFinished)
+        public int size;
+        public float randomRoomChanceDecrease;
+        public int regenerateLimit;
+        public int shrinkLimit;
+
+        [Space] public ConwayRules removeRules;
+        public ConwayRules addRules;
+        public SpecialRoomRules specialRoomRules;
+        public DebugInfoSettings debugInfoSettings;
+
+        public string customSeed;
+
+        ChanceGenerator current;
+
+        public bool CurrentFinished => (current == null || !current.isGenerating);
+
+        //public void Stop() => current.Destroy();
+
+        public void Generate()
         {
-            //current = ChanceGenerator.GetOrCreate();
+            if (CurrentFinished)
+            {
+                //current = ChanceGenerator.GetOrCreate();
 
-            current.Dispose();
+                current.Dispose();
 
-            current.Generate(new GenerationInfo(1, size, randomRoomChanceDecrease, regenerateLimit, shrinkLimit),
-                removeRules, addRules, specialRoomRules, debugInfoSettings);
+                current.Generate(new GenerationInfo(1, size, randomRoomChanceDecrease, regenerateLimit, shrinkLimit),
+                    removeRules, addRules, specialRoomRules, debugInfoSettings);
+            }
         }
     }
 }
