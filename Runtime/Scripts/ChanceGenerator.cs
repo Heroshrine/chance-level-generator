@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Scripting;
 using Debug = UnityEngine.Debug;
 using Random = Unity.Mathematics.Random;
 
@@ -43,6 +44,7 @@ namespace ChanceGen
         private float _chance;
 
         // DONE: make way to create generator in new ChanceGenerator script
+        [Preserve]
         public ChanceGenerator(GenerationInfo generationInfo,
             ConwayRules removeRules,
             ConwayRules addRules,
@@ -103,7 +105,9 @@ namespace ChanceGen
         }
 
 
+#if !UNITY_WEBGL
         // TODO: Check for "AggressiveOptimization" Method Implementation Attribute on all generation methods.
+        [Preserve]
         public async Task Generate(CancellationToken requiredToken)
         {
             if (Used)
@@ -113,14 +117,40 @@ namespace ChanceGen
                                          + $"instance while it is already generating! This is not supported.");
 
             IsGenerating = true;
-
             await Task.Run(Generate_Internal, requiredToken);
-
             IsGenerating = false;
             Used = true;
-
             OnFinishGenerating?.Invoke();
         }
+#else
+#pragma warning disable CS1998
+// disable warning as async keyword is only used for compatability reasons between WebGL and non WebGL builds.
+        [Preserve]
+        public async Task Generate(CancellationToken _ = default)
+        {
+#if UNITY_EDITOR || DEBUG
+            if (_ != default)
+                Debug.Log("Supplied cancellation token for ChanceGenerator.Generate is not needed if "
+                          + "only targeting WebGL platform. This message will only be logged in the editor "
+                          + "and debug builds.");
+
+            Debug.Log("The target platform is WebGL, generation will happen on the main thread! This message will "
+                      + "only be logged in the editor and debug builds.");
+#endif
+            if (Used)
+                throw new InvalidOperationException("Cannot reuse generators.");
+
+            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)}"
+                                         + $"instance while it is already generating! This is not supported.");
+
+            IsGenerating = true;
+            Generate_Internal();
+            IsGenerating = false;
+            Used = true;
+            OnFinishGenerating?.Invoke();
+        }
+#pragma warning restore CS1998
+#endif
 
         private void Generate_Internal()
         {
