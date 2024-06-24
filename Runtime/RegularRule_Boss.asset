@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a032aa26973f4c24a9ba12a8d83abd35, type: 3}
   m_Name: RegularRule_Boss
   m_EditorClassIdentifier: 
-  <MaxSteps>k__BackingField: 6
-  <ChanceIncreasePerStepAttempt>k__BackingField: 0.1
-  <IsMandatory>k__BackingField: 1
+  <MinSteps>k__BackingField: 6
+  <ChancePlaceEarly>k__BackingField: 0
   <RoomType>k__BackingField: {fileID: 11400000, guid: 2a1c5f3545abf4d4189fc835550860e8, type: 2}
