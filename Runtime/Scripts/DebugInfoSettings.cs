@@ -3,7 +3,7 @@ using System;
 
 namespace ChanceGen
 {
-    [System.Serializable]
+    [Serializable]
     public struct DebugInfoSettings
     {
         [field: SerializeField, Range(0, 0.25f)]
@@ -19,7 +19,6 @@ namespace ChanceGen
             DebuggingInfo = debugInfo;
         }
 
-        [Flags]
         public enum DebugInfo
         {
             Minimal = 1,

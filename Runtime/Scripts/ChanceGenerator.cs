@@ -88,6 +88,7 @@ namespace ChanceGen
 
                 roomsSpan[spiralIndex.x, spiralIndex.y] = SpawnRoom(spiralIndex);
 
+                // TODO: ensure this works:
                 if ((_chance += _generationInfo.RandomChanceIncrease) > 1)
                     break;
 
@@ -214,7 +215,7 @@ namespace ChanceGen
             {
                 for (var j = 0; j < _generationInfo.SideSize; j++)
                 {
-                    if (roomsSpan[i, j] == null || roomsSpan[i, j].walkData[0].walkValue == 0) continue;
+                    if (roomsSpan[i, j] == null || roomsSpan[i, j].walkData[0].walkValue != 0) continue;
 
                     Log($"Destroyed by walk: {roomsSpan[i, j].gameObject.name}");
                     Object.Destroy(roomsSpan[i, j].gameObject);
@@ -228,7 +229,7 @@ namespace ChanceGen
             yield return null;
 
             // do new walk to set special rooms
-            var spawnIndex = GetSpecialIndex(_spawnRoomRule.MaxSteps, _spawnRoomRule.ChanceIncreasePerStepAttempt);
+            var spawnIndex = GetSpecialIndex(orderedWalk, _spawnRoomRule.MinSteps, _spawnRoomRule.ChancePlaceEarly, 0);
             orderedWalk[spawnIndex].roomType = _spawnRoomRule.RoomType;
 
             IEnumerator<Tuple<int, Memory<RoomInfo>>> walk2 = Walk(orderedWalk[spawnIndex].gridPosition, 1);
@@ -245,7 +246,7 @@ namespace ChanceGen
             }
 
             orderedWalk = walkResults!.Item2.Span;
-            var bossIndex = GetSpecialIndex(_bossRoomRule.MaxSteps, _bossRoomRule.ChanceIncreasePerStepAttempt);
+            var bossIndex = GetSpecialIndex(orderedWalk, _bossRoomRule.MinSteps, _bossRoomRule.ChancePlaceEarly, 1);
             orderedWalk[bossIndex].roomType = _bossRoomRule.RoomType;
 
             yield return null;
@@ -258,8 +259,8 @@ namespace ChanceGen
                 const int tries = 2;
                 for (var j = 0; j < tries; j++)
                 {
-                    var index = GetSpecialIndex(additionalRoomRules[i].MaxSteps,
-                        additionalRoomRules[i].ChanceIncreasePerStepAttempt);
+                    var index = GetSpecialIndex(orderedWalk, additionalRoomRules[i].MinSteps,
+                        additionalRoomRules[i].ChancePlaceEarly, 1);
 
                     var index2D = orderedWalk[index].gridPosition;
                     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
@@ -307,20 +308,49 @@ namespace ChanceGen
             return r;
         }
 
-        private int GetSpecialIndex(int max, float chanceIncreasePerStep)
+        // TODO: convert min steps to range of min and max, with max clamped.
+        private int GetSpecialIndex(ReadOnlySpan<RoomInfo> orderedWalk,
+            int minSteps,
+            float chancePlaceEarly,
+            int walkIndex)
         {
-            var result = 0;
-            var addChance = 0f;
+            minSteps = math.min(orderedWalk[0].walkData[0].walkValue, minSteps);
 
-            while (addChance <= 1)
+            while (minSteps > 0)
             {
-                if (_random.NextFloat() >= addChance)
-                    result++;
+                if (_random.NextFloat() <= chancePlaceEarly)
+                    break;
 
-                addChance += chanceIncreasePerStep;
+                minSteps--;
             }
 
-            return math.clamp(result, 0, max);
+            var (start, length) = GetStartAndLength(ref orderedWalk);
+            return _random.NextInt(start, start + length);
+
+            // get start and length of indices with walk value.
+            (int start, int length) GetStartAndLength(ref ReadOnlySpan<RoomInfo> ordered)
+            {
+                var hit = false;
+                (int start, int length) result = (0, 0);
+
+                for (var i = 0; i < ordered.Length; i++)
+                {
+                    if (ordered[i].walkData[walkIndex].walkValue != minSteps)
+                    {
+                        if (!hit)
+                            continue;
+
+                        result.length = i - result.start;
+                        break;
+                    }
+
+                    if (!hit)
+                        result.start = i;
+                    hit = true;
+                }
+
+                return result;
+            }
         }
 
         /* TODO: look into getting away from IEnumerator so can use Span.
@@ -394,7 +424,7 @@ namespace ChanceGen
 
                 for (var i = 1; i <= orderedRoomSpan.Length; i++)
                 {
-                    orderedRoomSpan[^1].Selected = 0;
+                    orderedRoomSpan[^i].Selected = 0;
                     yield return new Tuple<int, Memory<RoomInfo>>(-1, null);
                 }
 
@@ -429,8 +459,8 @@ namespace ChanceGen
             for (var i = 0; i < 4; i++)
             {
                 Log(
-                    $"Updating room connections for {room.gameObject.name} - {(RoomConnections)(1 << i)}: {buffer[i].gameObject.name}",
-                    DebugInfo.Full);
+                    $"Updating room connections for {room.gameObject.name} - {(RoomConnections)(1 << i)}: "
+                    + $"{(buffer[i] != null ? buffer[i].gameObject.name : buffer[i])}", DebugInfo.Full);
 
                 if (buffer[i] == null)
                     room.connections &= ~(RoomConnections)(1 << i);
@@ -516,6 +546,7 @@ namespace ChanceGen
             return result;
         }
 
+        [HideInCallstack]
         private void Log(string msg, DebugInfo debugType = DebugInfo.Minimal)
         {
             if (debugType == DebugInfo.Full && _debugInfoSettings.DebuggingInfo != DebugInfo.Full)
@@ -585,12 +616,13 @@ namespace ChanceGen
                     _dir = (byte)(++_dir % 4);
                 }
 
+                // TODO: if getting weird stair pattern or anything major wrong with generation, convert to old way
                 return _dir switch
                 {
-                    0 => new int2(_spiral.x++, _spiral.y),
-                    1 => new int2(_spiral.x, _spiral.y++),
-                    2 => new int2(_spiral.x++, _spiral.y),
-                    3 => new int2(_spiral.x, _spiral.y++),
+                    0 => new int2(++_spiral.x, _spiral.y),
+                    1 => new int2(_spiral.x, ++_spiral.y),
+                    2 => new int2(++_spiral.x, _spiral.y),
+                    3 => new int2(_spiral.x, ++_spiral.y),
                     _ => throw new InvalidOperationException()
                 };
             }

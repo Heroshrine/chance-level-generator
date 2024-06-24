@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace ChanceGen
 {
@@ -24,7 +25,7 @@ namespace ChanceGen
 
         public GenerationInfo(uint seed, int sideSize, float randomChanceIncrease, int regenerateLimit, int shrinkLimit)
         {
-            Debug.Assert(sideSize % 2 == 0, "sideSize should be odd");
+            Assert.IsFalse(sideSize % 2 == 0, "sideSize should be odd");
 
             this.seed = seed;
             SideSize = sideSize;

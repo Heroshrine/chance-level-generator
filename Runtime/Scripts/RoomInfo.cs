@@ -53,10 +53,6 @@ namespace ChanceGen
                     usingColor = Color.magenta / 2;
                     usingColor.a = 0.55f;
                     break;
-                default:
-                    usingColor = Color.red;
-                    usingColor.a = 1;
-                    break;
             }
 
             if (Invalid)
