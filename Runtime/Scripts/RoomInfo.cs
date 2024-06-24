@@ -5,7 +5,7 @@ using Unity.Mathematics;
 
 namespace ChanceGen
 {
-    // TODO: needs to be monobehaviour? probably not.
+    // DONE: needs to be monobehaviour? probably not.
     [Serializable]
     public class RoomInfo
     {

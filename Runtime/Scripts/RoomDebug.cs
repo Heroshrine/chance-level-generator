@@ -8,17 +8,18 @@ namespace ChanceGen
 
         public void OnDrawGizmos()
         {
-            // TODO: remove drawing gizmos
-
             Color usingColor;
             if (roomInfo.Contiguous)
             {
-                usingColor = roomInfo.roomType.name switch
-                {
-                    "RoomType_Spawn" => Color.green,
-                    "RoomType_Boss" => Color.gray,
-                    _ => Color.cyan
-                };
+                if (roomInfo.roomType == null)
+                    usingColor = Color.cyan;
+                else
+                    usingColor = roomInfo.roomType.name switch
+                    {
+                        "RoomType_Spawn" => Color.green,
+                        "RoomType_Boss" => Color.gray,
+                        _ => Color.cyan
+                    };
 
                 usingColor.a = 0.8f;
             }

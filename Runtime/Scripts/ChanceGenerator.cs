@@ -2,10 +2,16 @@ using ChanceGen.Attributes;
 using ChanceGen.Collections.Generic;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Assertions;
+using Debug = UnityEngine.Debug;
 using Random = Unity.Mathematics.Random;
 
 namespace ChanceGen
@@ -18,6 +24,8 @@ namespace ChanceGen
 
         [field: SerializeField, ReadOnlyInInspector]
         public bool Used { get; private set; }
+
+        // TODO: add stage reporting through atomic writes
 
         public event Action OnFinishGenerating;
 
@@ -43,6 +51,9 @@ namespace ChanceGen
             ReadOnlyMemory<SpecialRule> additionalSpecialRules,
             DebugInfo debugInfoSettings)
         {
+            Assert.IsNotNull(spawnRoomRule, "spawnRoomRule cannot be null");
+            Assert.IsNotNull(bossRoomRule, "spawnRoomRule cannot be null");
+
             _generationInfo = generationInfo;
             _removeRules = removeRules;
             _addRules = addRules;
@@ -56,21 +67,54 @@ namespace ChanceGen
             _spiralIndexer = new SpiralIndexer((byte)_random.NextInt(0, 4), generationInfo.SideSize);
         }
 
-        public async Task Generate()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public MemoryGrid<RoomInfo> GetRoomsAsMemoryGrid() // TODO: readonly memory grid?
+        {
+            Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
+            return _rooms;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public SpanGrid<RoomInfo> GetRoomsAsSpanGrid() // TODO: readonly span grid?
+        {
+            Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
+            return _rooms.SpanGrid;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Memory<RoomInfo> GetRoomsAsMemory() // TODO: readonly memory?
+        {
+            Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
+            return (Memory<RoomInfo>)_rooms;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<RoomInfo> GetRoomsAsSpan() // TODO: readonly span?
+        {
+            Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
+            return (Span<RoomInfo>)_rooms.SpanGrid;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public RoomInfo[] GetRoomsAsArray()
+        {
+            Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
+            return _rooms.SpanGrid.ToFlattenedArray();
+        }
+
+
+        // TODO: Check for "AggressiveOptimization" Method Implementation Attribute on all generation methods.
+        public async Task Generate(CancellationToken requiredToken)
         {
             if (Used)
                 throw new InvalidOperationException("Cannot reuse generators.");
 
-            if (IsGenerating)
-            {
-                Debug.LogWarning($"Trying to start generation on a {nameof(ChanceGenerator)} instance while it is "
-                                 + $"already generating! This is not supported.");
-                return;
-            }
+            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)}"
+                                         + $"instance while it is already generating! This is not supported.");
 
             IsGenerating = true;
 
-            await Task.Run(Generate_Internal);
+            await Task.Run(Generate_Internal, requiredToken);
 
             IsGenerating = false;
             Used = true;
@@ -97,7 +141,7 @@ namespace ChanceGen
 
                 roomsSpan[spiralIndex.x, spiralIndex.y] = new RoomInfo(spiralIndex, null); // TODO: replace null
 
-                // TODO: ensure this works:
+                // DONE: ensure this works:
                 if ((_chance += _generationInfo.RandomChanceIncrease) > 1)
                     break;
             }
@@ -132,11 +176,14 @@ namespace ChanceGen
                 }
             }
 
+            Assert.IsNotNull(roomsSpan[_generationInfo.SideSize / 2, _generationInfo.SideSize / 2],
+                "RoomInfo in the center of the grid is null! Double check generator parameters.");
+
             Tuple<int, Memory<RoomInfo>> walk1 =
                 Walk(new int2(_generationInfo.SideSize / 2, _generationInfo.SideSize / 2), 0);
             // Tuple<int, Memory<RoomInfo>> walkResults = null;
 
-            // TODO: remove Enumerator
+            // DONE: remove Enumerator
             // do first walk with enumerator returned from Walk method
             // while (walk1.MoveNext())
             //     walkResults = walk1.Current;
@@ -162,7 +209,7 @@ namespace ChanceGen
                 {
                     Log($"Destroyed by Trim: {orderedWalk[i]}");
 
-                    // TODO: check if works, pretty sure both should be same object and so setting null twice is not needed.
+                    // DONE: check if works, pretty sure both should be same object and so setting null twice is not needed.
                     //roomsSpan[orderedWalk[i].gridPosition.x, orderedWalk[i].gridPosition.y] = null;
                     orderedWalk[i] = null;
                     walkCount--;
@@ -196,7 +243,7 @@ namespace ChanceGen
 
             Tuple<int, Memory<RoomInfo>> walk2 = Walk(orderedWalk[spawnIndex].gridPosition, 1);
 
-            // TODO: remove enumerator
+            // DONE: remove enumerator
             // while (walk2.MoveNext())
             //     walkResults = walk2.Current;
 
@@ -279,7 +326,7 @@ namespace ChanceGen
             }
         }
 
-        /* TODO: look into getting away from IEnumerator so can use Span.
+        /* DONE: look into getting away from IEnumerator so can use Span.
          * Probably need wrapper class to make it easy for people to generate, with IEnumerable to wait on in wrapper class.
          * In Unity 6, use Awaitable instead? Shall see how Span can be passed around.
          */
@@ -325,7 +372,7 @@ namespace ChanceGen
                     walkCount++;
                 }
 
-                // TODO: check that this works, before would use max found not min found.
+                // DONE: check that this works, before would use max found not min found.
                 working.walkData[walkDataIndex].walkValue = min + 1; // sets this walk to the smallest value found + 1.
                 orderedSet.Add((working, walkDataIndex));
             }
@@ -382,7 +429,7 @@ namespace ChanceGen
                 result[3] = null;
         }
 
-        // TODO: look at suggestions in this method
+        // DONE: look at suggestions in this method
         private byte GetNeighborCount(int x, int y)
         {
             SpanGrid<RoomInfo> roomsSpan = _rooms.SpanGrid;
@@ -396,7 +443,9 @@ namespace ChanceGen
                 vertFlags.x = true;
             }
             else if (roomsSpan[x, y + 1] == null)
+            {
                 result--;
+            }
 
             if (y - 1 < 0)
             {
@@ -404,7 +453,9 @@ namespace ChanceGen
                 vertFlags.y = true;
             }
             else if (roomsSpan[x, y - 1] == null)
+            {
                 result--;
+            }
 
             if (x + 1 < _generationInfo.SideSize)
             {
@@ -417,7 +468,9 @@ namespace ChanceGen
                     result--;
             }
             else
+            {
                 result -= 3;
+            }
 
             if (x - 1 >= 0)
             {
@@ -430,7 +483,9 @@ namespace ChanceGen
                     result--;
             }
             else
+            {
                 result -= 3;
+            }
 
             return result;
         }
@@ -501,11 +556,12 @@ namespace ChanceGen
 
                     _called = 0;
 
-                    // TODO: double check this works properly. Is replacing `if (_dir > 3) _dir = 0`.
+                    // DONE: double check this works properly. Is replacing `if (_dir > 3) _dir = 0`.
                     _dir = (byte)(++_dir % 4);
                 }
 
-                // TODO: if getting weird stair pattern or anything major wrong with generation, convert to old way
+                // DONE: if getting weird stair pattern or anything major wrong with generation, convert to old way
+                // think old way was causing index out of bounds exceptions, changed to how it is now.
                 var result = _spiral;
 
                 switch (_dir)
