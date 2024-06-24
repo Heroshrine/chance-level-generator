@@ -99,7 +99,7 @@ namespace ChanceGen
 
                 if (_random.NextFloat() < _chance) continue;
 
-                roomsSpan[spiralIndex.x, spiralIndex.y] = SpawnRoom(spiralIndex);
+                roomsSpan[spiralIndex.x, spiralIndex.y] = new RoomInfo(spiralIndex, null); // TODO: replace null
 
                 // TODO: ensure this works:
                 if ((_chance += _generationInfo.RandomChanceIncrease) > 1)
@@ -120,8 +120,7 @@ namespace ChanceGen
                         && roomsSpan[i, j] != null
                        )
                     {
-                        Object.Destroy(roomsSpan[i, j].gameObject);
-                        Log($"Destroyed by RemoveRooms: {roomsSpan[i, j].gameObject.name}");
+                        Log($"Destroyed by RemoveRooms: {roomsSpan[i, j]}");
                         roomsSpan[i, j] = null;
                     }
                     // add rooms based on add rules
@@ -131,8 +130,8 @@ namespace ChanceGen
                              && _random.NextFloat() < _addRules.ActionChance
                             )
                     {
-                        roomsSpan[i, j] = SpawnRoom(new int2(i, j));
-                        Log($"Added by AddRooms: {roomsSpan[i, j].gameObject.name}");
+                        Log($"Added by AddRooms: {roomsSpan[i, j]}");
+                        roomsSpan[i, j] = new RoomInfo(new int2(i, j), null); // TODO: replace null
                     }
                 }
             }
@@ -165,10 +164,10 @@ namespace ChanceGen
                 var i = 0;
                 for (; i < orderedWalk.Length; i++)
                 {
-                    Log($"Destroyed by Trim: {orderedWalk[i].gameObject.name}");
+                    Log($"Destroyed by Trim: {orderedWalk[i]}");
 
-                    Object.Destroy(orderedWalk[i].gameObject);
-                    roomsSpan[orderedWalk[i].gridPosition.x, orderedWalk[i].gridPosition.y] = null;
+                    // TODO: check if works, pretty sure both should be same object and so setting null twice is not needed.
+                    //roomsSpan[orderedWalk[i].gridPosition.x, orderedWalk[i].gridPosition.y] = null;
                     orderedWalk[i] = null;
                     walkCount--;
 
@@ -190,8 +189,7 @@ namespace ChanceGen
                 {
                     if (roomsSpan[i, j] == null || roomsSpan[i, j].walkData[0].walkValue != 0) continue;
 
-                    Log($"Destroyed by walk: {roomsSpan[i, j].gameObject.name}");
-                    Object.Destroy(roomsSpan[i, j].gameObject);
+                    Log($"Destroyed by walk: {roomsSpan[i, j]}");
                     roomsSpan[i, j] = null;
                 }
             }
@@ -224,11 +222,9 @@ namespace ChanceGen
                     var index2D = orderedWalk[index].gridPosition;
                     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
 
-                    if (orderedWalk[i]) continue;
+                    if (!additionalRoomRules[i].ShouldGenerate(neighborsBuffer4, index, index2D)) continue;
 
-                    if (additionalRoomRules[i].ShouldGenerate(neighborsBuffer4, index, index2D))
-                        orderedWalk[index].roomType = additionalRoomRules[i].RoomType;
-
+                    orderedWalk[index].roomType = additionalRoomRules[i].RoomType;
                     break;
                 }
             }
@@ -240,25 +236,6 @@ namespace ChanceGen
                 DestroyRooms();
                 _spiralIndexer.Reset((byte)_random.NextInt(0, 4));
             }
-        }
-
-        private RoomInfo SpawnRoom(int2 index)
-        {
-            GameObject n = new()
-            {
-                name = $"{index.x}, {index.y}",
-                transform =
-                {
-                    // TODO: allow axis selection
-                    position = new Vector3(index.x, 0, index.y)
-                }
-            };
-
-            var r = n.AddComponent<RoomInfo>();
-            r.gridPosition = index;
-
-            Log($"spawning room: {r.gameObject.name}", DebugInfo.Full);
-            return r;
         }
 
         // TODO: convert min steps to range of min and max, with max clamped.
@@ -346,7 +323,7 @@ namespace ChanceGen
                     if (neighbors[i].walkData[walkDataIndex].walkValue != 0
                         || neighbors[i].walkData[walkDataIndex].queued
                        ) continue;
-
+ 
                     open.Enqueue(neighbors[i]);
                     neighbors[i].walkData[walkDataIndex].queued = true;
                     walkCount++;
@@ -364,22 +341,8 @@ namespace ChanceGen
 
         private void DestroyRooms()
         {
-            SpanGrid<RoomInfo> rooms = _rooms.SpanGrid;
-
-            for (var i = 0; i < _generationInfo.SideSize; i++)
-            {
-                for (var j = 0; j < _generationInfo.SideSize; j++)
-                {
-                    if (rooms[i, j] != null)
-                    {
-                        Object.Destroy(rooms[i, j].gameObject);
-                        Log($"Destroyed {rooms[i, j]} from DestroyRooms method", DebugInfo.Full);
-                        rooms[i, j] = null;
-                    }
-
-                    rooms[i, j] = null;
-                }
-            }
+            Log($"Destroyed all rooms from DestroyRooms method", DebugInfo.Full);
+            _rooms = new RoomInfo[_generationInfo.SideSize, _generationInfo.SideSize];
         }
 
         private void UpdateRoomConnections(Span<RoomInfo> buffer, RoomInfo room)
@@ -388,9 +351,8 @@ namespace ChanceGen
 
             for (var i = 0; i < 4; i++)
             {
-                Log(
-                    $"Updating room connections for {room.gameObject.name} - {(RoomConnections)(1 << i)}: "
-                    + $"{(buffer[i] != null ? buffer[i].gameObject.name : buffer[i])}", DebugInfo.Full);
+                Log($"Updating room connections for {room} - {(RoomConnections)(1 << i)}: {buffer[i]}",
+                    DebugInfo.Full);
 
                 if (buffer[i] == null)
                     room.connections &= ~(RoomConnections)(1 << i);
