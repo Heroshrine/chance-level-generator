@@ -1,17 +1,21 @@
+using System;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace ChanceGen
 {
-    [CreateAssetMenu(fileName = "new Special Room Rule", menuName = "ChanceGen/new Special Rule", order = 0)]
-    public class SpecialRule : ScriptableObject
+    public abstract class SpecialRule : ScriptableObject
     {
-        // max setps from 0 on the ordered list, wherever that may be.
+        // max steps from 0 on the ordered list, wherever that may be.
         [field: SerializeField] public int MaxSteps { get; private set; }
+
         // how much the chance to break should increase per step attempt.
-        [field: SerializeField] public int ChanceIncreasePerStepAttempt { get; private set; }
-        // is this room required to spawn?
-        [field: SerializeField] public bool IsMandatory { get; private set; }
+        [field: SerializeField, Min(float.Epsilon)]
+        public virtual float ChanceIncreasePerStepAttempt { get; private set; } = float.Epsilon;
+
         // the room type to place when successfully placing the room
-        [field: SerializeField] public RoomType RoomType { get; private set; }
+        [field: SerializeField] public RoomType RoomType { get; private set; } // TODO: make this an array
+
+        public abstract bool ShouldGenerate(ReadOnlySpan<RoomInfo> neighborBuffer4, int walkIndex, int2 gridPosition);
     }
 }

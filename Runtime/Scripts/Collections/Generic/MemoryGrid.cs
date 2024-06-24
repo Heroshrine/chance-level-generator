@@ -7,15 +7,15 @@ namespace ChanceGen.Collections.Generic
 {
     public readonly struct MemoryGrid<T> : IEquatable<MemoryGrid<T>>
     {
-        public SpanGrid<T> SpanGrid => new(_memory, _width);
+        public SpanGrid<T> SpanGrid => new(_memory, width);
+        public readonly int width;
 
         private readonly Memory<T> _memory;
-        private readonly int _width;
 
         public MemoryGrid(T[,] array)
         {
             _memory = new Memory<T>(array.Cast<T>().ToArray());
-            _width = array.GetLength(1);
+            width = array.GetLength(1);
         }
 
         public bool Equals(MemoryGrid<T> other) => _memory.Equals(other._memory);

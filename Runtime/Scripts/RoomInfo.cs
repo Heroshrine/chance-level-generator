@@ -15,7 +15,7 @@ namespace ChanceGen
         public bool Invalid { get; internal set; }
 
         [HideInInspector] public bool markedForDeletion;
-        public readonly WalkData[] walkData = new WalkData[2];
+        public readonly WalkData[] walkData = new WalkData[2]; // TODO: look into using pointers
         public int2 gridPosition;
 
         public RoomConnections connections;
