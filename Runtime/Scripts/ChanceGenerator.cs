@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Threading.Tasks;
 using ChanceGen.Attributes;
 using ChanceGen.Collections.Generic;
 using Unity.Mathematics;
@@ -21,6 +22,8 @@ namespace ChanceGen
 
         [field: SerializeField, ReadOnlyInInspector]
         public bool Used { get; private set; }
+
+        public event Action OnFinishGenerating;
 
         private GenerationInfo _generationInfo;
         private ConwayRules _removeRules;
@@ -57,7 +60,7 @@ namespace ChanceGen
             _spiralIndexer = new SpiralIndexer((byte)_random.NextInt(0, 4), generationInfo.SideSize);
         }
 
-        public IEnumerator Generate()
+        public async Task Generate()
         {
             if (Used)
                 throw new InvalidOperationException("Cannot reuse generators.");
@@ -66,11 +69,21 @@ namespace ChanceGen
             {
                 Debug.LogWarning($"Trying to start generation on a {nameof(ChanceGenerator)} instance while it is "
                                  + $"already generating! This is not supported.");
-                yield break;
+                return;
             }
 
             IsGenerating = true;
 
+            await Task.Run(Generate_Internal);
+
+            IsGenerating = false;
+            Used = true;
+
+            OnFinishGenerating?.Invoke();
+        }
+
+        private void Generate_Internal()
+        {
             Log($"Generation started with seed: {_generationInfo.seed}");
             Log($"Level SideSize: {_generationInfo.SideSize}", DebugInfo.Full);
             Log($"Level Area: {_generationInfo.Area}", DebugInfo.Full);
@@ -91,13 +104,7 @@ namespace ChanceGen
                 // TODO: ensure this works:
                 if ((_chance += _generationInfo.RandomChanceIncrease) > 1)
                     break;
-
-                if (_debugInfoSettings.GenerationSpeed != 0)
-                    yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
             }
-
-            yield return null;
-
 
             // do generation add/remove rules
             for (var i = 0; i < _generationInfo.SideSize; i++)
@@ -116,9 +123,6 @@ namespace ChanceGen
                         Object.Destroy(roomsSpan[i, j].gameObject);
                         Log($"Destroyed by RemoveRooms: {roomsSpan[i, j].gameObject.name}");
                         roomsSpan[i, j] = null;
-
-                        if (_debugInfoSettings.GenerationSpeed != 0)
-                            yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
                     }
                     // add rooms based on add rules
                     else if (neighborCount <= _addRules.LimitLTET
@@ -129,53 +133,27 @@ namespace ChanceGen
                     {
                         roomsSpan[i, j] = SpawnRoom(new int2(i, j));
                         Log($"Added by AddRooms: {roomsSpan[i, j].gameObject.name}");
-
-                        if (_debugInfoSettings.GenerationSpeed != 0)
-                            yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
                     }
                 }
             }
 
-            yield return null;
-
-            IEnumerator<Tuple<int, Memory<RoomInfo>>> walk1 =
+            Tuple<int, Memory<RoomInfo>> walk1 =
                 Walk(new int2(_generationInfo.SideSize / 2, _generationInfo.SideSize / 2), 0);
-            Tuple<int, Memory<RoomInfo>> walkResults = null;
+            // Tuple<int, Memory<RoomInfo>> walkResults = null;
 
+            // TODO: remove Enumerator
             // do first walk with enumerator returned from Walk method
-            while (walk1.MoveNext())
-            {
-                walkResults = walk1.Current;
-                if (_debugInfoSettings.GenerationSpeed == 0) continue;
+            // while (walk1.MoveNext())
+            //     walkResults = walk1.Current;
 
-                if (walkResults?.Item1 != -1)
-                    yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
-                else
-                    yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed / 4f);
-            }
-
-            var walkCount = walkResults!.Item1;
-            Span<RoomInfo> orderedWalk = walkResults.Item2.Span;
+            var walkCount = walk1!.Item1;
+            Span<RoomInfo> orderedWalk = walk1.Item2.Span;
 
             // if walk count too low, regenerate
             if (walkCount < _generationInfo.RegenerateLimit)
             {
                 Log($"walkCount was {walkCount} and RegenerateLimit is {_generationInfo.RegenerateLimit}, "
                     + $"regenerating...");
-
-                if (_debugInfoSettings.GenerationSpeed != 0)
-                {
-                    for (var i = 0; i < orderedWalk.Length; i++)
-                    {
-                        if (orderedWalk[i] == null) continue;
-
-                        orderedWalk[i].Invalid = true;
-
-                        yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed / 2f);
-                    }
-                }
-
-                yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
 
                 ResetGenerationLoop();
                 goto retry;
@@ -196,19 +174,14 @@ namespace ChanceGen
 
                     if (walkCount <= _generationInfo.ShrinkLimit)
                         break;
-
-                    if (_debugInfoSettings.GenerationSpeed != 0)
-                        yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
                 }
 
                 orderedWalk = orderedWalk[(i + 1)..];
                 Span<RoomInfo> buffer4 = new RoomInfo[4]; // TODO: look into using pointer
 
-                for (var j = 0; j < orderedWalk.Length; j++)
-                    UpdateRoomConnections(buffer4, orderedWalk[j]);
+                foreach (var room in orderedWalk)
+                    UpdateRoomConnections(buffer4, room);
             }
-
-            yield return null;
 
             // delete rooms not covered by first walk
             for (var i = 0; i < _generationInfo.SideSize; i++)
@@ -220,36 +193,22 @@ namespace ChanceGen
                     Log($"Destroyed by walk: {roomsSpan[i, j].gameObject.name}");
                     Object.Destroy(roomsSpan[i, j].gameObject);
                     roomsSpan[i, j] = null;
-
-                    if (_debugInfoSettings.GenerationSpeed != 0)
-                        yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
                 }
             }
-
-            yield return null;
 
             // do new walk to set special rooms
             var spawnIndex = GetSpecialIndex(orderedWalk, _spawnRoomRule.MinSteps, _spawnRoomRule.ChancePlaceEarly, 0);
             orderedWalk[spawnIndex].roomType = _spawnRoomRule.RoomType;
 
-            IEnumerator<Tuple<int, Memory<RoomInfo>>> walk2 = Walk(orderedWalk[spawnIndex].gridPosition, 1);
+            Tuple<int, Memory<RoomInfo>> walk2 = Walk(orderedWalk[spawnIndex].gridPosition, 1);
 
-            while (walk2.MoveNext())
-            {
-                walkResults = walk2.Current;
-                if (_debugInfoSettings.GenerationSpeed == 0) continue;
+            // TODO: remove enumerator
+            // while (walk2.MoveNext())
+            //     walkResults = walk2.Current;
 
-                if (walkResults?.Item1 != -1)
-                    yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed);
-                else
-                    yield return new WaitForSeconds(_debugInfoSettings.GenerationSpeed / 4f);
-            }
-
-            orderedWalk = walkResults!.Item2.Span;
+            orderedWalk = walk2!.Item2.Span;
             var bossIndex = GetSpecialIndex(orderedWalk, _bossRoomRule.MinSteps, _bossRoomRule.ChancePlaceEarly, 1);
             orderedWalk[bossIndex].roomType = _bossRoomRule.RoomType;
-
-            yield return null;
 
             // do additional room rules, skipping if chosen room is spawn or boss if 2 tries reached
             ReadOnlySpan<SpecialRule> additionalRoomRules = _additionalSpecialRules.Span;
@@ -274,13 +233,7 @@ namespace ChanceGen
                 }
             }
 
-            yield return null;
-
-            // finish
-            IsGenerating = false;
-            Used = true;
-
-            yield break;
+            return;
 
             void ResetGenerationLoop()
             {
@@ -358,7 +311,7 @@ namespace ChanceGen
          * In Unity 6, use Awaitable instead? Shall see how Span can be passed around.
          */
         // Walks rooms using walk algorithm, returning
-        private IEnumerator<Tuple<int, Memory<RoomInfo>>> Walk(int2 startPos, int walkDataIndex)
+        private Tuple<int, Memory<RoomInfo>> Walk(int2 startPos, int walkDataIndex)
         {
             // setup used local variables
             var orderedSet = new SortedSet<(RoomInfo room, int walkCount)>(new SortedRoomInfoComparer());
@@ -402,34 +355,11 @@ namespace ChanceGen
                 // TODO: check that this works, before would use max found not min found.
                 working.walkData[walkDataIndex].walkValue = min + 1; // sets this walk to the smallest value found + 1.
                 orderedSet.Add((working, walkDataIndex));
-
-                if (!_debugInfoSettings.ShowWalk) continue; // if not debugging, don't show walk
-
-                working.Selected = 1;
-                yield return null;
-                working.Selected = 2;
             }
 
             Memory<RoomInfo> orderedWalk = Array.ConvertAll(orderedSet.ToArray(), item => item.Item1);
 
-            if (!_debugInfoSettings.ShowWalk)
-            {
-                yield return new Tuple<int, Memory<RoomInfo>>(walkCount, orderedWalk);
-            }
-            else // if debugging, show walk
-            {
-                Tuple<int, Memory<RoomInfo>> result = new(walkCount, orderedWalk);
-
-                Span<RoomInfo> orderedRoomSpan = result.Item2.Span;
-
-                for (var i = 1; i <= orderedRoomSpan.Length; i++)
-                {
-                    orderedRoomSpan[^i].Selected = 0;
-                    yield return new Tuple<int, Memory<RoomInfo>>(-1, null);
-                }
-
-                yield return result;
-            }
+            return new Tuple<int, Memory<RoomInfo>>(walkCount, orderedWalk);
         }
 
         private void DestroyRooms()
