@@ -10,7 +10,6 @@ using Unity.Mathematics;
 using UnityEngine;
 using Object = UnityEngine.Object;
 using Random = Unity.Mathematics.Random;
-using static ChanceGen.DebugInfoSettings;
 
 namespace ChanceGen
 {
@@ -25,13 +24,13 @@ namespace ChanceGen
 
         public event Action OnFinishGenerating;
 
-        private GenerationInfo _generationInfo;
-        private ConwayRules _removeRules;
-        private ConwayRules _addRules;
-        private SpecialRule _spawnRoomRule;
-        private SpecialRule _bossRoomRule;
-        private ReadOnlyMemory<SpecialRule> _additionalSpecialRules;
-        private DebugInfoSettings _debugInfoSettings;
+        private readonly GenerationInfo _generationInfo;
+        private readonly ConwayRules _removeRules;
+        private readonly ConwayRules _addRules;
+        private readonly SpecialRule _spawnRoomRule;
+        private readonly SpecialRule _bossRoomRule;
+        private readonly ReadOnlyMemory<SpecialRule> _additionalSpecialRules;
+        private readonly DebugInfo _debugInfoSettings;
 
         private MemoryGrid<RoomInfo> _rooms;
         private Random _random;
@@ -39,13 +38,13 @@ namespace ChanceGen
         private float _chance;
 
         // DONE: make way to create generator in new ChanceGenerator script
-        private ChanceGenerator(GenerationInfo generationInfo,
+        public ChanceGenerator(GenerationInfo generationInfo,
             ConwayRules removeRules,
             ConwayRules addRules,
             SpecialRule spawnRoomRule,
             SpecialRule bossRoomRule,
             ReadOnlyMemory<SpecialRule> additionalSpecialRules,
-            DebugInfoSettings debugInfoSettings)
+            DebugInfo debugInfoSettings)
         {
             _generationInfo = generationInfo;
             _removeRules = removeRules;
@@ -323,7 +322,7 @@ namespace ChanceGen
                     if (neighbors[i].walkData[walkDataIndex].walkValue != 0
                         || neighbors[i].walkData[walkDataIndex].queued
                        ) continue;
- 
+
                     open.Enqueue(neighbors[i]);
                     neighbors[i].walkData[walkDataIndex].queued = true;
                     walkCount++;
@@ -386,6 +385,7 @@ namespace ChanceGen
                 result[3] = null;
         }
 
+        // TODO: look at suggestions in this method
         private byte GetNeighborCount(int x, int y)
         {
             SpanGrid<RoomInfo> roomsSpan = _rooms.SpanGrid;
@@ -441,7 +441,7 @@ namespace ChanceGen
         [HideInCallstack]
         private void Log(string msg, DebugInfo debugType = DebugInfo.Minimal)
         {
-            if (debugType == DebugInfo.Full && _debugInfoSettings.DebuggingInfo != DebugInfo.Full)
+            if (debugType == DebugInfo.Full && _debugInfoSettings != DebugInfo.Full)
                 return;
 
             Debug.Log(msg);
@@ -509,14 +509,25 @@ namespace ChanceGen
                 }
 
                 // TODO: if getting weird stair pattern or anything major wrong with generation, convert to old way
-                return _dir switch
+                var result = _spiral;
+
+                switch (_dir)
                 {
-                    0 => new int2(++_spiral.x, _spiral.y),
-                    1 => new int2(_spiral.x, ++_spiral.y),
-                    2 => new int2(++_spiral.x, _spiral.y),
-                    3 => new int2(_spiral.x, ++_spiral.y),
-                    _ => throw new InvalidOperationException()
-                };
+                    case 0:
+                        _spiral.x++;
+                        break;
+                    case 1:
+                        _spiral.y++;
+                        break;
+                    case 2:
+                        _spiral.x--;
+                        break;
+                    case 3:
+                        _spiral.y--;
+                        break;
+                }
+
+                return result;
             }
         }
 
