@@ -13,7 +13,7 @@ using static ChanceGen.DebugInfoSettings;
 
 namespace ChanceGen
 {
-    // TODO: needs constructor
+    // DONE: needs constructor
     public class ChanceGenerator
     {
         [field: SerializeField, ReadOnlyInInspector]
@@ -252,7 +252,7 @@ namespace ChanceGen
 
             // do additional room rules, skipping if chosen room is spawn or boss if 2 tries reached
             ReadOnlySpan<SpecialRule> additionalRoomRules = _additionalSpecialRules.Span;
-            Span<RoomInfo> neighborsBuffer4 = new RoomInfo[4];
+            Span<RoomInfo> neighborsBuffer4 = new RoomInfo[4]; // TODO: look into using pointer
             for (var i = 0; i < additionalRoomRules.Length; i++)
             {
                 const int tries = 2;

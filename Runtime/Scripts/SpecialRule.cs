@@ -14,7 +14,7 @@ namespace ChanceGen
         public virtual float ChanceIncreasePerStepAttempt { get; private set; } = float.Epsilon;
 
         // the room type to place when successfully placing the room
-        [field: SerializeField] public RoomType RoomType { get; private set; } // TODO: make this an array
+        [field: SerializeField] public RoomType RoomType { get; private set; }
 
         public abstract bool ShouldGenerate(ReadOnlySpan<RoomInfo> neighborBuffer4, int walkIndex, int2 gridPosition);
     }
