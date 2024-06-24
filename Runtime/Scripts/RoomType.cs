@@ -6,7 +6,7 @@ namespace ChanceGen
     public class RoomType : ScriptableObject
     {
         [field: SerializeField] public bool IsSpecial { get; private set; }
-        
+
         // TODO: make array of rooms that is randomly chosen from in this room
     }
 }

@@ -10,8 +10,7 @@ namespace ChanceGen
         [field: SerializeField] public int MinSteps { get; private set; }
 
         // how much the chance to break should increase per step attempt.
-        [field: SerializeField, Min(0)]
-        public virtual float ChancePlaceEarly { get; private set; } = float.Epsilon;
+        [field: SerializeField, Min(0)] public virtual float ChancePlaceEarly { get; private set; } = float.Epsilon;
 
         // the room type to place when successfully placing the room
         [field: SerializeField] public RoomType RoomType { get; private set; }

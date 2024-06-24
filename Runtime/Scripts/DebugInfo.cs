@@ -1,6 +1,3 @@
-using UnityEngine;
-using System;
-
 namespace ChanceGen
 {
     public enum DebugInfo
