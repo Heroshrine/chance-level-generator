@@ -1,6 +1,7 @@
 using System;
 using Unity.Mathematics;
 using UnityEngine;
+using Random = Unity.Mathematics.Random;
 
 namespace ChanceGen
 {
@@ -25,6 +26,7 @@ namespace ChanceGen
             int walkDataIndex,
             byte fullNeighborCount,
             int2 gridPosition,
-            (int start, int end) generateIndexRange);
+            (int start, int end) generateIndexRange,
+            ref Random random);
     }
 }

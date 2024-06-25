@@ -3,7 +3,7 @@ using System.Data;
 using ChanceGen.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using Random = Unity.Mathematics.Random;
 
 namespace ChanceGen
 {
@@ -40,17 +40,25 @@ namespace ChanceGen
             int walkDataIndex,
             byte fullNeighborCount,
             int2 gridPosition,
-            (int start, int end) generateIndexRange)
+            (int start, int end) generateIndexRange,
+            ref Random random)
         {
             var chance = 1f / (generateIndexRange.end - generateIndexRange.start + 1f);
+
+            Debug.Log($"walkIndex: {walkIndex}");
+            Debug.Log($"generateIndexRange.start: {generateIndexRange.start}");
+            Debug.Log($"generateIndexRange.end: {generateIndexRange.end}");
+            Debug.Log($"chance: {chance}");
+
+            Debug.LogWarning((walkIndex - generateIndexRange.start + 1) * chance);
 
             /* If unique, guarantee spawn by the last index. ChanceGenerator will always force spawn if at the end
              * of range if not overriding boss room.
              */
             if (IsUnique)
-                return Random.Range(0, 1) <= (walkIndex - generateIndexRange.start + 1) * chance;
+                return random.NextFloat() <= (walkIndex - generateIndexRange.start + 1) * chance;
             else
-                return Random.Range(0, 1) <= chance;
+                return random.NextFloat() <= chance;
         }
     }
 }

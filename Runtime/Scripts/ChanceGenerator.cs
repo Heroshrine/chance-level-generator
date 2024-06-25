@@ -289,8 +289,11 @@ namespace ChanceGen
             foreach (var rule in additionalRoomRules)
             {
                 var (ruleMin, ruleMax) = rule.GetWalkValueRange(in readOnlyWalk, 1);
-                ruleMin = walkIndexRanges[ruleMin].start;
-                ruleMax = walkIndexRanges[ruleMax - 1].end;
+                ruleMin = walkIndexRanges[^ruleMin].start;
+                ruleMax = walkIndexRanges[^(ruleMax - 1)].end;
+
+                Debug.LogWarning($"ruleMin: {ruleMin}");
+                Debug.LogWarning($"ruleMax: {ruleMax}");
 
                 for (var i = ruleMin; i < ruleMax; i++)
                 {
@@ -299,56 +302,27 @@ namespace ChanceGen
                     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
                     ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
 
-                    if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, readOnlyWalk.Length - i, 1,
-                            fullNeighborCount, index2D, (ruleMin, ruleMax))) continue;
-
-                    if (readOnlyWalk[i].roomType != _bossRoomRule.RoomType)
+                    // force spawn unique rooms if not going to spawn
+                    if (rule.IsUnique
+                        && ((i + 1 < ruleMax
+                             && i + 2 >= ruleMax
+                             && readOnlyWalk[i + 1].roomType == _bossRoomRule.RoomType)
+                            || i + 1 >= ruleMax))
                     {
-                        orderedWalk[i].roomType = rule.RoomType;
-                    }
-                    else if (i + 1 < ruleMax && readOnlyWalk[i + 1].roomType == _bossRoomRule.RoomType && rule.IsUnique)
-                    {
+                        Log($"Force spawned unique room at {readOnlyWalk[i].GridPosition}");
                         orderedWalk[i].roomType = rule.RoomType;
                         break;
                     }
-                }
 
-                // for (var i = 1; i < readOnlyWalk.Length; i++) // skip first room (^length) because it's the spawn room
-                // {
-                //     if (i < ruleMin) continue;
-                //     if (i > ruleMax) break;
-                //     if (readOnlyWalk[^i].roomType == _bossRoomRule.RoomType) continue;
-                //
-                //     var index2D = readOnlyWalk[^i].GridPosition;
-                //     var fullNeighborCount = GetNeighborCount(index2D.x, index2D.y);
-                //     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
-                //     ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
-                //
-                //     if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, readOnlyWalk.Length - i, 1,
-                //             fullNeighborCount, index2D))
-                //         continue;
-                //
-                //     orderedWalk[i].roomType = rule.RoomType;
-                //     if (additionalRoomRules[i].IsUnique) break;
-                // }
-                //
-                // const int tries = 2;
-                // for (var j = 0; j < tries; j++)
-                // {
-                //     var index = rule.GetWalkValue(in readOnlyWalk, 1);
-                //     var index2D = orderedWalk[index].GridPosition;
-                //     var fullNeighborCount = GetNeighborCount(index2D.x, index2D.y);
-                //     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
-                //     ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
-                //
-                //     if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, 1,
-                //             fullNeighborCount, index, index2D)) continue;
-                //
-                //     orderedWalk[index].roomType = rule.RoomType;
-                //
-                //     if (rule.IsUnique)
-                //         break;
-                // }
+                    if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, i, 1,
+                            fullNeighborCount, index2D, (ruleMin, ruleMax), ref _random)) continue;
+
+                    if (readOnlyWalk[i].roomType == _bossRoomRule.RoomType) continue;
+
+                    orderedWalk[i].roomType = rule.RoomType;
+                    if (rule.IsUnique)
+                        break;
+                }
             }
 
             return;
@@ -360,35 +334,6 @@ namespace ChanceGen
                 _spiralIndexer.Reset((byte)_random.NextInt(0, 4));
             }
         }
-
-        // DONE: cache this so we dont loop over twice
-        // DONE: (in StepRule) convert min steps to range of min and max, with max clamped.
-        // get start and length of indices with walk value.
-        // private (int start, int length) GetStartAndLength(in ReadOnlySpan<RoomInfo> ordered,
-        //     int walkValue,
-        //     int walkDataIndex)
-        // {
-        //     var hit = false;
-        //     (int start, int length) result = (0, 0);
-        //
-        //     for (var i = 0; i < ordered.Length; i++)
-        //     {
-        //         if (ordered[i].walkData[walkDataIndex].walkValue != walkValue)
-        //         {
-        //             if (!hit)
-        //                 continue;
-        //
-        //             result.length = i - result.start;
-        //             break;
-        //         }
-        //
-        //         if (!hit)
-        //             result.start = i;
-        //         hit = true;
-        //     }
-        //
-        //     return result;
-        // }
 
         private ReadOnlySpan<(int start, int end)> CacheWalkRanges(in ReadOnlySpan<RoomInfo> ordered, int walkDataIndex)
         {
