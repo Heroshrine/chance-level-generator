@@ -18,25 +18,24 @@ namespace ChanceGen
         [HideInInspector] public bool markedForDeletion;
         public readonly WalkData[] walkData = new WalkData[2]; // TODO: look into using pointers
 
-        public int2 GridPosition => gridPosition;
-        internal readonly int2 gridPosition;
+        public int2 GridPosition { get; internal set; }
 
         public RoomConnections connections;
         public RoomType roomType;
 
         internal RoomInfo(int2 gridPosition, RoomType roomType)
         {
-            this.gridPosition = gridPosition;
+            this.GridPosition = gridPosition;
             this.roomType = roomType;
         }
 
         internal RoomInfo(int2 gridPosition, RoomType roomType, RoomConnections connections)
         {
-            this.gridPosition = gridPosition;
+            this.GridPosition = gridPosition;
             this.roomType = roomType;
             this.connections = connections;
         }
 
-        public override string ToString() => gridPosition.ToString();
+        public override string ToString() => GridPosition.ToString();
     }
 }

@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
+using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Scripting;
@@ -31,8 +32,8 @@ namespace ChanceGen
         private readonly GenerationInfo _generationInfo;
         private readonly ConwayRules _removeRules;
         private readonly ConwayRules _addRules;
-        private readonly SpecialRule _spawnRoomRule;
-        private readonly SpecialRule _bossRoomRule;
+        private readonly StepRule _spawnRoomRule;
+        private readonly StepRule _bossRoomRule;
         private readonly ReadOnlyMemory<SpecialRule> _additionalSpecialRules;
         private readonly DebugInfo _debugInfoSettings;
 
@@ -46,8 +47,8 @@ namespace ChanceGen
         public ChanceGenerator(GenerationInfo generationInfo,
             ConwayRules removeRules,
             ConwayRules addRules,
-            SpecialRule spawnRoomRule,
-            SpecialRule bossRoomRule,
+            StepRule spawnRoomRule,
+            StepRule bossRoomRule,
             ReadOnlyMemory<SpecialRule> additionalSpecialRules,
             DebugInfo debugInfoSettings)
         {
@@ -189,7 +190,7 @@ namespace ChanceGen
                         && roomsSpan[i, j] != null
                        )
                     {
-                        Log($"Destroyed by RemoveRooms: {roomsSpan[i, j]}");
+                        Log($"Destroyed by RemoveRooms: {roomsSpan[i, j]}", DebugInfo.Full);
                         roomsSpan[i, j] = null;
                     }
                     // add rooms based on add rules
@@ -199,8 +200,8 @@ namespace ChanceGen
                              && _random.NextFloat() < _addRules.ActionChance
                             )
                     {
-                        Log($"Added by AddRooms: {roomsSpan[i, j]}");
                         roomsSpan[i, j] = new RoomInfo(new int2(i, j), null); // TODO: replace null
+                        Log($"Added by AddRooms: {roomsSpan[i, j]}", DebugInfo.Full);
                     }
                 }
             }
@@ -208,15 +209,9 @@ namespace ChanceGen
             Assert.IsNotNull(roomsSpan[_generationInfo.SideSize / 2, _generationInfo.SideSize / 2],
                 "RoomInfo in the center of the grid is null! Double check generator parameters.");
 
+            // DONE: remove Enumerator
             Tuple<int, Memory<RoomInfo>> walk1 =
                 Walk(new int2(_generationInfo.SideSize / 2, _generationInfo.SideSize / 2), 0);
-            // Tuple<int, Memory<RoomInfo>> walkResults = null;
-
-            // DONE: remove Enumerator
-            // do first walk with enumerator returned from Walk method
-            // while (walk1.MoveNext())
-            //     walkResults = walk1.Current;
-
             var walkCount = walk1!.Item1;
             Span<RoomInfo> orderedWalk = walk1.Item2.Span;
 
@@ -230,6 +225,8 @@ namespace ChanceGen
                 goto retry;
             }
 
+            Debug.Log("walk count: " + walkCount);
+
             // if walk count too high, remove rooms
             if (walkCount > _generationInfo.ShrinkLimit)
             {
@@ -239,7 +236,7 @@ namespace ChanceGen
                     Log($"Destroyed by Trim: {orderedWalk[i]}");
 
                     // DONE: check if works, pretty sure both should be same object and so setting null twice is not needed.
-                    //roomsSpan[orderedWalk[i].gridPosition.x, orderedWalk[i].gridPosition.y] = null;
+                    roomsSpan[orderedWalk[i].GridPosition.x, orderedWalk[i].GridPosition.y] = null;
                     orderedWalk[i] = null;
                     walkCount--;
 
@@ -261,44 +258,97 @@ namespace ChanceGen
                 {
                     if (roomsSpan[i, j] == null || roomsSpan[i, j].walkData[0].walkValue != 0) continue;
 
-                    Log($"Destroyed by walk: {roomsSpan[i, j]}");
+                    Log($"Destroyed by walk: {roomsSpan[i, j]}", DebugInfo.Full);
                     roomsSpan[i, j] = null;
                 }
             }
 
             // do new walk to set special rooms
-            var spawnIndex = GetSpecialIndex(orderedWalk, _spawnRoomRule.MinSteps, _spawnRoomRule.ChancePlaceEarly, 0);
+            ReadOnlySpan<RoomInfo> readOnlyWalk = orderedWalk;
+            ReadOnlySpan<(int start, int end)> walkIndexRanges = CacheWalkRanges(readOnlyWalk, 0);
+
+            var (min, max) = _spawnRoomRule.GetWalkValueRange(in readOnlyWalk, 0);
+            var (start, end) = walkIndexRanges[_random.NextInt(min, max)];
+            var spawnIndex = _random.NextInt(start, end);
             orderedWalk[spawnIndex].roomType = _spawnRoomRule.RoomType;
 
-            Tuple<int, Memory<RoomInfo>> walk2 = Walk(orderedWalk[spawnIndex].gridPosition, 1);
-
             // DONE: remove enumerator
-            // while (walk2.MoveNext())
-            //     walkResults = walk2.Current;
+            Tuple<int, Memory<RoomInfo>> walk2 = Walk(orderedWalk[spawnIndex].GridPosition, 1);
+            readOnlyWalk = orderedWalk = walk2!.Item2.Span;
+            walkIndexRanges = CacheWalkRanges(readOnlyWalk, 0);
 
-            orderedWalk = walk2!.Item2.Span;
-            var bossIndex = GetSpecialIndex(orderedWalk, _bossRoomRule.MinSteps, _bossRoomRule.ChancePlaceEarly, 1);
+            (min, max) = _bossRoomRule.GetWalkValueRange(in readOnlyWalk, 1);
+            (start, end) = walkIndexRanges[_random.NextInt(min, max)];
+            var bossIndex = _random.NextInt(start, end);
             orderedWalk[bossIndex].roomType = _bossRoomRule.RoomType;
 
-            // do additional room rules, skipping if chosen room is spawn or boss if 2 tries reached
+            // do additional room rules, skipping if chosen room is spawn or boss
             ReadOnlySpan<SpecialRule> additionalRoomRules = _additionalSpecialRules.Span;
             Span<RoomInfo> neighborsBuffer4 = new RoomInfo[4]; // TODO: look into using pointer
-            for (var i = 0; i < additionalRoomRules.Length; i++)
+
+            foreach (var rule in additionalRoomRules)
             {
-                const int tries = 2;
-                for (var j = 0; j < tries; j++)
+                var (ruleMin, ruleMax) = rule.GetWalkValueRange(in readOnlyWalk, 1);
+                ruleMin = walkIndexRanges[ruleMin].start;
+                ruleMax = walkIndexRanges[ruleMax - 1].end;
+
+                for (var i = ruleMin; i < ruleMax; i++)
                 {
-                    var index = GetSpecialIndex(orderedWalk, additionalRoomRules[i].MinSteps,
-                        additionalRoomRules[i].ChancePlaceEarly, 1);
-
-                    var index2D = orderedWalk[index].gridPosition;
+                    var index2D = readOnlyWalk[i].GridPosition;
+                    var fullNeighborCount = GetNeighborCount(index2D.x, index2D.y);
                     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
+                    ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
 
-                    if (!additionalRoomRules[i].ShouldGenerate(neighborsBuffer4, index, index2D)) continue;
+                    if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, readOnlyWalk.Length - i, 1,
+                            fullNeighborCount, index2D, (ruleMin, ruleMax))) continue;
 
-                    orderedWalk[index].roomType = additionalRoomRules[i].RoomType;
-                    break;
+                    if (readOnlyWalk[i].roomType != _bossRoomRule.RoomType)
+                    {
+                        orderedWalk[i].roomType = rule.RoomType;
+                    }
+                    else if (i + 1 < ruleMax && readOnlyWalk[i + 1].roomType == _bossRoomRule.RoomType && rule.IsUnique)
+                    {
+                        orderedWalk[i].roomType = rule.RoomType;
+                        break;
+                    }
                 }
+
+                // for (var i = 1; i < readOnlyWalk.Length; i++) // skip first room (^length) because it's the spawn room
+                // {
+                //     if (i < ruleMin) continue;
+                //     if (i > ruleMax) break;
+                //     if (readOnlyWalk[^i].roomType == _bossRoomRule.RoomType) continue;
+                //
+                //     var index2D = readOnlyWalk[^i].GridPosition;
+                //     var fullNeighborCount = GetNeighborCount(index2D.x, index2D.y);
+                //     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
+                //     ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
+                //
+                //     if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, readOnlyWalk.Length - i, 1,
+                //             fullNeighborCount, index2D))
+                //         continue;
+                //
+                //     orderedWalk[i].roomType = rule.RoomType;
+                //     if (additionalRoomRules[i].IsUnique) break;
+                // }
+                //
+                // const int tries = 2;
+                // for (var j = 0; j < tries; j++)
+                // {
+                //     var index = rule.GetWalkValue(in readOnlyWalk, 1);
+                //     var index2D = orderedWalk[index].GridPosition;
+                //     var fullNeighborCount = GetNeighborCount(index2D.x, index2D.y);
+                //     GetNeighborsAdjacent(neighborsBuffer4, index2D.x, index2D.y);
+                //     ReadOnlySpan<RoomInfo> adjacentBuffer4 = neighborsBuffer4;
+                //
+                //     if (!rule.ShouldGenerate(in readOnlyWalk, in adjacentBuffer4, 1,
+                //             fullNeighborCount, index, index2D)) continue;
+                //
+                //     orderedWalk[index].roomType = rule.RoomType;
+                //
+                //     if (rule.IsUnique)
+                //         break;
+                // }
             }
 
             return;
@@ -306,55 +356,63 @@ namespace ChanceGen
             void ResetGenerationLoop()
             {
                 DestroyRooms();
+                _chance = 0;
                 _spiralIndexer.Reset((byte)_random.NextInt(0, 4));
             }
         }
 
-        // TODO: convert min steps to range of min and max, with max clamped.
-        private int GetSpecialIndex(ReadOnlySpan<RoomInfo> orderedWalk,
-            int minSteps,
-            float chancePlaceEarly,
-            int walkIndex)
+        // DONE: cache this so we dont loop over twice
+        // DONE: (in StepRule) convert min steps to range of min and max, with max clamped.
+        // get start and length of indices with walk value.
+        // private (int start, int length) GetStartAndLength(in ReadOnlySpan<RoomInfo> ordered,
+        //     int walkValue,
+        //     int walkDataIndex)
+        // {
+        //     var hit = false;
+        //     (int start, int length) result = (0, 0);
+        //
+        //     for (var i = 0; i < ordered.Length; i++)
+        //     {
+        //         if (ordered[i].walkData[walkDataIndex].walkValue != walkValue)
+        //         {
+        //             if (!hit)
+        //                 continue;
+        //
+        //             result.length = i - result.start;
+        //             break;
+        //         }
+        //
+        //         if (!hit)
+        //             result.start = i;
+        //         hit = true;
+        //     }
+        //
+        //     return result;
+        // }
+
+        private ReadOnlySpan<(int start, int end)> CacheWalkRanges(in ReadOnlySpan<RoomInfo> ordered, int walkDataIndex)
         {
-            minSteps = math.min(orderedWalk[0].walkData[0].walkValue, minSteps);
+            Span<(int start, int end)> result = new (int, int)[ordered[0].walkData[walkDataIndex].walkValue];
 
-            // index of 0 is furthest away from the spawn room, so subtracting here is really
-            // increasing number of steps.
-            while (minSteps > 0)
+            var lastHit = ordered[^1].walkData[walkDataIndex].walkValue;
+
+            // TODO: check this works properly for start, mid, and end values.
+            for (int i = 1, v = 1, j = 0; i <= ordered.Length; i++)
             {
-                if (_random.NextFloat() <= chancePlaceEarly) // TODO: remove chance place early
-                    break;
-
-                minSteps--;
-            }
-
-            var (start, length) = GetStartAndLength(ref orderedWalk);
-            return _random.NextInt(start, start + length);
-
-            // get start and length of indices with walk value.
-            (int start, int length) GetStartAndLength(ref ReadOnlySpan<RoomInfo> ordered)
-            {
-                var hit = false;
-                (int start, int length) result = (0, 0);
-
-                for (var i = 0; i < ordered.Length; i++)
+                if (ordered[^i].walkData[walkDataIndex].walkValue != lastHit)
                 {
-                    if (ordered[i].walkData[walkIndex].walkValue != minSteps)
-                    {
-                        if (!hit)
-                            continue;
-
-                        result.length = i - result.start;
-                        break;
-                    }
-
-                    if (!hit)
-                        result.start = i;
-                    hit = true;
+                    /* length - (i - 1) to get previous index, length - v to get index last changed.
+                     length - v - (length - (i - 1)) is length, so previous + length is end index.
+                    */
+                    result[j++] = (ordered.Length - (i - 1),
+                        ordered.Length - (i - 1) + (ordered.Length - v - (ordered.Length - (i - 1))));
+                    v = i;
                 }
 
-                return result;
+                lastHit = ordered[^i].walkData[walkDataIndex].walkValue;
             }
+
+            return result;
         }
 
         /* DONE: look into getting away from IEnumerator so can use Span.
@@ -382,14 +440,16 @@ namespace ChanceGen
                 working.Contiguous = true; // if we reached here, it's contiguous
 
                 // get adjacent neighbors, putting them into neighbors span.
-                GetNeighborsAdjacent(neighbors, working.gridPosition.x, working.gridPosition.y);
+                GetNeighborsAdjacent(neighbors, working.GridPosition.x, working.GridPosition.y);
                 var min = int.MaxValue;
                 // for every neighbor, check its walk value and check if queued
                 for (var i = 0; i < neighbors.Length; i++)
                 {
                     if (neighbors[i] == null) continue;
 
-                    if (neighbors[i].walkData[walkDataIndex].walkValue < min)
+                    if (neighbors[i].walkData[walkDataIndex].walkValue > 0
+                        && neighbors[i].walkData[walkDataIndex].walkValue < min
+                       )
                         min = neighbors[i].walkData[walkDataIndex].walkValue;
 
                     working.connections |= (RoomConnections)(1 << i);
@@ -404,7 +464,8 @@ namespace ChanceGen
                 }
 
                 // DONE: check that this works, before would use max found not min found.
-                working.walkData[walkDataIndex].walkValue = min + 1; // sets this walk to the smallest value found + 1.
+                working.walkData[walkDataIndex].walkValue =
+                    min != int.MaxValue ? min + 1 : 1; // sets this walk to the smallest value found + 1.
                 orderedSet.Add((working, walkDataIndex));
             }
 
@@ -421,7 +482,7 @@ namespace ChanceGen
 
         private void UpdateRoomConnections(Span<RoomInfo> buffer, RoomInfo room)
         {
-            GetNeighborsAdjacent(buffer, room.gridPosition.x, room.gridPosition.y);
+            GetNeighborsAdjacent(buffer, room.GridPosition.x, room.GridPosition.y);
 
             for (var i = 0; i < 4; i++)
             {
