@@ -2,10 +2,8 @@ using ChanceGen.Attributes;
 using ChanceGen.Collections.Generic;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
@@ -98,6 +96,7 @@ namespace ChanceGen
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Preserve]
         public RoomInfo[] GetRoomsAsArray()
         {
             Assert.IsTrue(Used && !IsGenerating, "Rooms cannot be retrieved until after generation!");
@@ -113,7 +112,7 @@ namespace ChanceGen
             if (Used)
                 throw new InvalidOperationException("Cannot reuse generators.");
 
-            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)}"
+            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)} "
                                          + $"instance while it is already generating! This is not supported.");
 
             IsGenerating = true;
@@ -140,7 +139,7 @@ namespace ChanceGen
             if (Used)
                 throw new InvalidOperationException("Cannot reuse generators.");
 
-            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)}"
+            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)} "
                                          + $"instance while it is already generating! This is not supported.");
 
             IsGenerating = true;
@@ -319,9 +318,11 @@ namespace ChanceGen
         {
             minSteps = math.min(orderedWalk[0].walkData[0].walkValue, minSteps);
 
+            // index of 0 is furthest away from the spawn room, so subtracting here is really
+            // increasing number of steps.
             while (minSteps > 0)
             {
-                if (_random.NextFloat() <= chancePlaceEarly)
+                if (_random.NextFloat() <= chancePlaceEarly) // TODO: remove chance place early
                     break;
 
                 minSteps--;
