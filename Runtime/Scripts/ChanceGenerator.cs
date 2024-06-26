@@ -30,10 +30,10 @@ namespace ChanceGen
         public event Action OnFinishGenerating;
 
         private readonly GenerationInfo _generationInfo;
-        private readonly ConwayRules _removeRules;
-        private readonly ConwayRules _addRules;
-        private readonly StepRule _spawnRoomRule;
-        private readonly StepRule _bossRoomRule;
+        private readonly ConwayRule _removeRule;
+        private readonly ConwayRule _addRule;
+        private readonly SpecialStepRule _spawnRoomRule;
+        private readonly SpecialStepRule _bossRoomRule;
         private readonly ReadOnlyMemory<SpecialRule> _additionalSpecialRules;
         private readonly DebugInfo _debugInfoSettings;
 
@@ -45,10 +45,10 @@ namespace ChanceGen
         // DONE: make way to create generator in new ChanceGenerator script
         [Preserve]
         public ChanceGenerator(GenerationInfo generationInfo,
-            ConwayRules removeRules,
-            ConwayRules addRules,
-            StepRule spawnRoomRule,
-            StepRule bossRoomRule,
+            ConwayRule removeRule,
+            ConwayRule addRule,
+            SpecialStepRule spawnRoomRule,
+            SpecialStepRule bossRoomRule,
             ReadOnlyMemory<SpecialRule> additionalSpecialRules,
             DebugInfo debugInfoSettings)
         {
@@ -56,8 +56,8 @@ namespace ChanceGen
             Assert.IsNotNull(bossRoomRule, "spawnRoomRule cannot be null");
 
             _generationInfo = generationInfo;
-            _removeRules = removeRules;
-            _addRules = addRules;
+            _removeRule = removeRule;
+            _addRule = addRule;
             _spawnRoomRule = spawnRoomRule;
             _bossRoomRule = bossRoomRule;
             _additionalSpecialRules = additionalSpecialRules;
@@ -184,9 +184,9 @@ namespace ChanceGen
                     var neighborCount = GetNeighborCount(i, j);
 
                     // remove rooms based on remove rules
-                    if ((neighborCount <= _removeRules.LimitLTET || neighborCount > _removeRules.LimitGT)
+                    if (_removeRule.IfOr(neighborCount)
                         && !(i == _generationInfo.SideSize / 2 && j == _generationInfo.SideSize / 2)
-                        && _random.NextFloat() < _removeRules.ActionChance
+                        && _random.NextFloat() < _removeRule.ActionChance
                         && roomsSpan[i, j] != null
                        )
                     {
@@ -194,10 +194,9 @@ namespace ChanceGen
                         roomsSpan[i, j] = null;
                     }
                     // add rooms based on add rules
-                    else if (neighborCount <= _addRules.LimitLTET
-                             && neighborCount > _addRules.LimitGT
+                    else if (_addRule.IfAnd(neighborCount)
                              && roomsSpan[i, j] == null
-                             && _random.NextFloat() < _addRules.ActionChance
+                             && _random.NextFloat() < _addRule.ActionChance
                             )
                     {
                         roomsSpan[i, j] = new RoomInfo(new int2(i, j), null); // TODO: replace null

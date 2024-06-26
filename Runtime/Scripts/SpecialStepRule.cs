@@ -1,14 +1,12 @@
 using System;
-using System.Data;
-using ChanceGen.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
 
 namespace ChanceGen
 {
-    [CreateAssetMenu(fileName = "new Special Step Rule", menuName = "ChanceGen/new Special Step Rule", order = 0)]
-    public class StepRule : SpecialRule
+    [CreateAssetMenu(fileName = "new Special Step Rule", menuName = "ChanceGen/new Special Step Rule")]
+    public class SpecialStepRule : SpecialRule
     {
         // max steps from 0 on the ordered list (from spawn room)
         [field: SerializeField, Min(0)] public int MinSteps { get; protected set; }
