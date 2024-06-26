@@ -2,17 +2,21 @@ using ChanceGen.Attributes;
 using ChanceGen.Collections.Generic;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Scripting;
 using Debug = UnityEngine.Debug;
 using Random = Unity.Mathematics.Random;
+
+#if DEBUG
+[assembly: InternalsVisibleTo("Heroshrine.ChanceLevelGenerator.Tests")]
+#endif
 
 namespace ChanceGen
 {
@@ -104,6 +108,26 @@ namespace ChanceGen
             return _rooms.SpanGrid.ToFlattenedArray();
         }
 
+
+        /// <summary>
+        /// Using Tasks breaks with Unity's unit tests, there's no reason it should be breaking if this works.
+        /// Running in editor using tasks works just fine, and there are no API calls that must be single threaded.
+        /// </summary>
+        [Conditional("UNITY_INCLUDE_TESTS")]
+        public void GenerateNoAsync()
+        {
+            if (Used)
+                throw new InvalidOperationException("Cannot reuse generators.");
+
+            Assert.IsFalse(IsGenerating, $"Trying to start generation on a {nameof(ChanceGenerator)} "
+                                         + $"instance while it is already generating! This is not supported.");
+
+            IsGenerating = true;
+            Generate_Internal();
+            IsGenerating = false;
+            Used = true;
+            OnFinishGenerating?.Invoke();
+        }
 
 #if !UNITY_WEBGL
         // TODO: Check for "AggressiveOptimization" Method Implementation Attribute on all generation methods.
@@ -224,15 +248,13 @@ namespace ChanceGen
                 goto retry;
             }
 
-            Debug.Log("walk count: " + walkCount);
-
             // if walk count too high, remove rooms
             if (walkCount > _generationInfo.ShrinkLimit)
             {
                 var i = 0;
                 for (; i < orderedWalk.Length; i++)
                 {
-                    Log($"Destroyed by Trim: {orderedWalk[i]}");
+                    Log($"Destroyed by Trim: {orderedWalk[i]}", DebugInfo.Full);
 
                     // DONE: check if works, pretty sure both should be same object and so setting null twice is not needed.
                     roomsSpan[orderedWalk[i].GridPosition.x, orderedWalk[i].GridPosition.y] = null;
@@ -264,6 +286,7 @@ namespace ChanceGen
 
             // do new walk to set special rooms
             ReadOnlySpan<RoomInfo> readOnlyWalk = orderedWalk;
+            // TODO: instead of start/end, should it just be slicing orderedWalk?
             ReadOnlySpan<(int start, int end)> walkIndexRanges = CacheWalkRanges(readOnlyWalk, 0);
 
             var (min, max) = _spawnRoomRule.GetWalkValueRange(in readOnlyWalk, 0);
@@ -274,7 +297,7 @@ namespace ChanceGen
             // DONE: remove enumerator
             Tuple<int, Memory<RoomInfo>> walk2 = Walk(orderedWalk[spawnIndex].GridPosition, 1);
             readOnlyWalk = orderedWalk = walk2!.Item2.Span;
-            walkIndexRanges = CacheWalkRanges(readOnlyWalk, 0);
+            walkIndexRanges = CacheWalkRanges(readOnlyWalk, 1);
 
             (min, max) = _bossRoomRule.GetWalkValueRange(in readOnlyWalk, 1);
             (start, end) = walkIndexRanges[_random.NextInt(min, max)];
@@ -290,9 +313,6 @@ namespace ChanceGen
                 var (ruleMin, ruleMax) = rule.GetWalkValueRange(in readOnlyWalk, 1);
                 ruleMin = walkIndexRanges[^ruleMin].start;
                 ruleMax = walkIndexRanges[^(ruleMax - 1)].end;
-
-                Debug.LogWarning($"ruleMin: {ruleMin}");
-                Debug.LogWarning($"ruleMax: {ruleMax}");
 
                 for (var i = ruleMin; i < ruleMax; i++)
                 {
@@ -340,7 +360,8 @@ namespace ChanceGen
 
             var lastHit = ordered[^1].walkData[walkDataIndex].walkValue;
 
-            // TODO: check this works properly for start, mid, and end values.
+            // DONE: check this works properly for start, mid, and end values.
+            // sorry future me and other readers, variable names need work here. 
             for (int i = 1, v = 1, j = 0; i <= ordered.Length; i++)
             {
                 if (ordered[^i].walkData[walkDataIndex].walkValue != lastHit)
@@ -392,15 +413,13 @@ namespace ChanceGen
                     if (neighbors[i] == null) continue;
 
                     if (neighbors[i].walkData[walkDataIndex].walkValue > 0
-                        && neighbors[i].walkData[walkDataIndex].walkValue < min
-                       )
+                        && neighbors[i].walkData[walkDataIndex].walkValue < min)
                         min = neighbors[i].walkData[walkDataIndex].walkValue;
 
                     working.connections |= (RoomConnections)(1 << i);
 
                     if (neighbors[i].walkData[walkDataIndex].walkValue != 0
-                        || neighbors[i].walkData[walkDataIndex].queued
-                       ) continue;
+                        || neighbors[i].walkData[walkDataIndex].queued) continue;
 
                     open.Enqueue(neighbors[i]);
                     neighbors[i].walkData[walkDataIndex].queued = true;
@@ -413,6 +432,7 @@ namespace ChanceGen
                 orderedSet.Add((working, walkDataIndex));
             }
 
+            //TODO: test which is faster, orderedSet or adding to list then Array.Sort on list.ToArray()
             Memory<RoomInfo> orderedWalk = Array.ConvertAll(orderedSet.ToArray(), item => item.Item1);
 
             return new Tuple<int, Memory<RoomInfo>>(walkCount, orderedWalk);
@@ -620,11 +640,11 @@ namespace ChanceGen
             }
         }
 
-        private struct SortedRoomInfoComparer : IComparer<(RoomInfo room, int walkCount)>
+        private struct SortedRoomInfoComparer : IComparer<(RoomInfo room, int walkIndex)>
         {
-            public int Compare((RoomInfo room, int walkCount) x, (RoomInfo room, int walkCount) y)
+            public int Compare((RoomInfo room, int walkIndex) x, (RoomInfo room, int walkIndex) y)
             {
-                var r = y.room.walkData[y.walkCount].walkValue - x.room.walkData[x.walkCount].walkValue;
+                var r = y.room.walkData[y.walkIndex].walkValue - x.room.walkData[x.walkIndex].walkValue;
                 return r == 0 ? -1 : r;
             }
         }

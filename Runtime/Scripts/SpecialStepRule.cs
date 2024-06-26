@@ -9,10 +9,10 @@ namespace ChanceGen
     public class SpecialStepRule : SpecialRule
     {
         // max steps from 0 on the ordered list (from spawn room)
-        [field: SerializeField, Min(0)] public int MinSteps { get; protected set; }
+        [field: SerializeField, Min(0)] public int MinSteps { get; protected internal set; }
 
         // min steps from 0 on the ordered list (from spawn room)
-        [field: SerializeField, Min(0)] public int MaxSteps { get; protected set; }
+        [field: SerializeField, Min(0)] public int MaxSteps { get; protected internal set; }
 
         // set when GetWalkValueRange is called
         protected int realMin;

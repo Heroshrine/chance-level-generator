@@ -1,6 +1,7 @@
 using ChanceGen.Attributes;
 using UnityEngine;
 using System;
+using System.ComponentModel;
 using Unity.Mathematics;
 
 namespace ChanceGen
@@ -23,12 +24,14 @@ namespace ChanceGen
         public RoomConnections connections;
         public RoomType roomType;
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
         internal RoomInfo(int2 gridPosition, RoomType roomType)
         {
             this.GridPosition = gridPosition;
             this.roomType = roomType;
         }
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
         internal RoomInfo(int2 gridPosition, RoomType roomType, RoomConnections connections)
         {
             this.GridPosition = gridPosition;

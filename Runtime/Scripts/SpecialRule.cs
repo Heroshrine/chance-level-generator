@@ -8,13 +8,13 @@ namespace ChanceGen
     public abstract class SpecialRule : ScriptableObject
     {
         // the room type to place when successfully placing the room
-        [field: SerializeField] public RoomType RoomType { get; protected set; }
-
-        public abstract (int min, int max) GetWalkValueRange(in ReadOnlySpan<RoomInfo> orderedWalk, int walkDataIndex);
+        [field: SerializeField] public RoomType RoomType { get; protected internal set; }
 
         // if the rule can generate multiple times or not. If unique, must spawn.
         [field: SerializeField, SerializeReference]
-        public virtual bool IsUnique { get; protected set; }
+        public virtual bool IsUnique { get; protected internal set; }
+
+        public abstract (int min, int max) GetWalkValueRange(in ReadOnlySpan<RoomInfo> orderedWalk, int walkDataIndex);
 
         // // if this rule must be successful
         // [field: SerializeField, SerializeReference]
