@@ -3,11 +3,16 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
 using Random = Unity.Mathematics.Random;
+
+#if UNITY_INCLUDE_TESTS
+[assembly: InternalsVisibleTo("ChanceGen.Tests")]
+#endif
 
 namespace ChanceGen
 {
@@ -16,24 +21,24 @@ namespace ChanceGen
         private readonly List<Node> _generated = new();
 
         private readonly int _generateAmount;
-        private readonly int _generateMin;
+        private readonly int _nonInvalidMinimum;
         private readonly float _diffuseAddChance;
 
         private Random _random;
 
-        public ChanceGenerator(int generateAmount, int generateMin, float diffuseAddChance, uint seed)
+        public ChanceGenerator(int generateAmount, int nonInvalidMinimum, float diffuseAddChance, uint seed)
         {
             _generateAmount = generateAmount;
             _diffuseAddChance = diffuseAddChance;
-
+            _nonInvalidMinimum = nonInvalidMinimum;
             _random = new Random(seed);
         }
 
         public virtual async Task<ReadOnlyMemory<Node>> Generate()
         {
             var startNode = new Node(0, 0);
-            await Task.Run(() => NeighborDiffuse(in startNode));
-            //await Task.Run(() => );
+            await Task.Run(() => NeighborDiffuse(in startNode), Application.exitCancellationToken);
+            await Task.Run(() => _generated.RemoveAll(n => n.invalid), Application.exitCancellationToken);
             return _generated.ToArray();
         }
 
@@ -47,7 +52,7 @@ namespace ChanceGen
 
                 var index = _random.NextInt(0, allNeighbors.Length);
 
-                if (_generated.Count > _generateMin && _random.NextFloat() > _diffuseAddChance)
+                if (_generated.Count > _nonInvalidMinimum && _random.NextFloat() > _diffuseAddChance)
                 {
                     allNeighbors[index].invalid = true;
                     _generated.Add(allNeighbors[index]);
@@ -80,7 +85,7 @@ namespace ChanceGen
             return neighbors.ToArray();
         }
 
-        protected virtual Span<Node> GetAdjacentNeighbors(Node node) =>
+        protected static Span<Node> GetAdjacentNeighbors(Node node) =>
             new[]
             {
                 new Node(node.position.x, node.position.y - 1),
