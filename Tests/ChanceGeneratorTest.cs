@@ -17,10 +17,13 @@ namespace ChanceGen.Tests
             (int genAmount, int nonInvalidMin) genInfo,
             [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.GetGenerateAddChance))]
             float diffuseAddChance,
+            [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.GetBlockChance))]
+            float blockChance,
             [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.GetSeed))]
             uint seed)
         {
-            var generator = new ChanceGenerator(genInfo.genAmount, genInfo.nonInvalidMin, diffuseAddChance, seed);
+            var generator = new ChanceGenerator(genInfo.genAmount, genInfo.nonInvalidMin, diffuseAddChance, blockChance,
+                seed);
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -34,27 +37,32 @@ namespace ChanceGen.Tests
 
     public static class ChanceGeneratorDataProvider
     {
-        public const uint SEED = 1237508;
-
         public static IEnumerable<(int genAmount, int nonInvalidMin)> GetGenerateAmount()
         {
-            for (int i = 30, j = 8; i <= 120; i += 10, j += 3)
-            {
-                yield return (i, j);
-            }
+            yield return (30, 5);
+            yield return (80, 20);
+            yield return (200, 60);
         }
 
         public static IEnumerable<float> GetGenerateAddChance()
         {
-            for (var i = 0.4f; i <= 0.9f; i += 0.1f)
-            {
-                yield return i;
-            }
+            yield return 0.4f;
+            yield return 0.6f;
+            yield return 0.8f;
+            yield return 0.99f;
+        }
+
+        public static IEnumerable<float> GetBlockChance()
+        {
+            yield return 0.05f;
+            yield return 0.1f;
+            yield return 0.2f;
+            yield return 0.5f;
         }
 
         public static IEnumerable<uint> GetSeed()
         {
-            Unity.Mathematics.Random random = new(SEED);
+            Unity.Mathematics.Random random = new(uint.Parse($"{DateTime.Now: mfffhss}"));
             for (var i = 0; i <= 5; i++)
             {
                 yield return random.NextUInt() + 1u;
