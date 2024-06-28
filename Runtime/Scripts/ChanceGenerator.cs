@@ -15,27 +15,32 @@ namespace ChanceGen
 {
     public class ChanceGenerator
     {
+        protected readonly HashSet<NodePosition> blockedPositions = new();
         protected readonly HashSet<NodePosition> generatedPositions = new();
         protected readonly HashSet<Node> generated;
 
         protected readonly int generateAmount;
         protected readonly int diffuseMinimum;
-        protected readonly float diffuseAddChance;
         protected readonly float diffuseBlockChance;
 
-        private Random _random;
+        /// <summary>
+        /// Controls if a cell can be selected by the diffuse generator, uses <see cref="ConwayRule.IfAnd"/>.
+        /// </summary>
+        protected readonly ConwayRule diffuseSelectionRule;
+
+        protected Random random;
 
         public ChanceGenerator(int generateAmount,
             int diffuseMinimum,
-            float diffuseAddChance,
             float diffuseBlockChance,
-            uint seed)
+            uint seed,
+            ConwayRule diffuseSelectionRule)
         {
             this.generateAmount = generateAmount;
-            this.diffuseAddChance = diffuseAddChance;
             this.diffuseBlockChance = diffuseBlockChance;
+            this.diffuseSelectionRule = diffuseSelectionRule;
             this.diffuseMinimum = diffuseMinimum;
-            _random = new Random(seed);
+            random = new Random(seed);
 
             generated = new HashSet<Node>(diffuseMinimum, new Node.NodeComparer());
         }
@@ -64,19 +69,27 @@ namespace ChanceGen
                     break;
                 }
 
-                var index = _random.NextInt(0, allNeighbors.Length);
+                var index = random.NextInt(0, allNeighbors.Length);
+                var neighborsCount = GetFullNeighborsCount(allNeighbors[index]);
+                var blockedType = BlockedType.None;
                 Node node;
 
-                if (generated.Count > diffuseMinimum && _random.NextFloat() > diffuseAddChance)
-                {
-                    if (_random.NextFloat() > diffuseBlockChance) continue;
+                // TODO: only calculate this if generated.Count > diffuseMinimum
+                if (diffuseSelectionRule.IfAnd(neighborsCount, ref random))
+                    blockedType = BlockedType.ConwayBlocked;
+                else if (random.NextFloat() <= diffuseBlockChance)
+                    blockedType = BlockedType.DiffuseBlocked;
 
+                if ((generated.Count > diffuseMinimum
+                     && blockedType != BlockedType.None)
+                    || blockedType == BlockedType.ConwayBlocked)
+                {
                     node = new Node(allNeighbors[index])
                     {
-                        blocked = true
+                        blocked = blockedType
                     };
                     generated.Add(node);
-                    generatedPositions.Add(node.position);
+                    blockedPositions.Add(node.position);
                     continue;
                 }
 
@@ -86,7 +99,7 @@ namespace ChanceGen
             }
         }
 
-        // only usable in certain stage, if not in correct stage assert and direct to GetGeneratedAllAdjacentNeighbors (which is slower).
+        // TODO: only usable in certain stage, if not in correct stage assert and direct to GetGeneratedAllAdjacentNeighbors (which is slower).
         /// <summary>
         /// Gets all adjacent neighbors for every generated node.
         /// </summary>
@@ -96,12 +109,12 @@ namespace ChanceGen
             var neighbors = new HashSet<NodePosition>();
 
             Span<NodePosition> adj = stackalloc NodePosition[4];
-            foreach (var node in generated.Where(node => !node.blocked))
+            foreach (var node in generated.Where(node => node.blocked == BlockedType.None))
             {
                 GetAdjacentNeighbors(in node.position, ref adj);
                 foreach (var n in adj)
                 {
-                    if (!generatedPositions.Contains(n))
+                    if (!generatedPositions.Contains(n) && !blockedPositions.Contains(n))
                         neighbors.Add(n);
                 }
             }
@@ -207,6 +220,88 @@ namespace ChanceGen
                 else
                     buffer8[i] = null;
             }
+        }
+
+        /// <summary>
+        /// Gets the count of the existing neighbors of this node. Depending on the stage of generation,
+        /// this can count blocked nodes as well.
+        /// </summary>
+        /// <param name="node">The node to find neighbor count of.</param>
+        /// <returns>The neighbor count found.</returns>
+        public byte GetAdjacentNeighborsCount(Node node)
+        {
+            byte count = 0;
+
+            for (int i = 0, j = 0; i < 4; i++, j += 2)
+            {
+                var pos = node.position + Node.neighborPositions[j];
+                if (generatedPositions.Contains(pos))
+                    count++;
+            }
+
+            return count;
+        }
+
+        // TODO: only usable in certain stage, if not in correct stage assert and direct to other GetAdjacentNeighborsCount
+        /// <summary>
+        /// Gets the count of the existing neighbors of this node. Depending on the stage of generation,
+        /// this can count blocked nodes as well.
+        /// </summary>
+        /// <param name="position">The node position to find neighbor count of.</param>
+        /// <returns>The neighbor count found.</returns>
+        public byte GetAdjacentNeighborsCount(NodePosition position)
+        {
+            byte count = 0;
+
+            for (int i = 0, j = 0; i < 4; i++, j += 2)
+            {
+                var pos = position + Node.neighborPositions[j];
+                if (generatedPositions.Contains(pos))
+                    count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Gets the full (adjacents and diagonals) count of neighbors of this node. Depending on the stage of generation,
+        /// this can count blocked nodes as well.
+        /// </summary>
+        /// <param name="node">The node to find neighbor count of.</param>
+        /// <returns>The neighbor count found.</returns>
+        public byte GetFullNeighborsCount(Node node)
+        {
+            byte count = 0;
+
+            for (var i = 0; i < 8; i++)
+            {
+                var pos = node.position + Node.neighborPositions[i];
+                if (generatedPositions.Contains(pos))
+                    count++;
+            }
+
+            return count;
+        }
+
+        // TODO: only usable in certain stage, if not in correct stage assert and direct to other GetFullNeighborsCount
+        /// <summary>
+        /// Gets the full (adjacents and diagonals) count of neighbors of this node. Depending on the stage of generation,
+        /// this can count blocked nodes as well.
+        /// </summary>
+        /// <param name="position">The node position to find neighbor count of.</param>
+        /// <returns>The neighbor count found.</returns>
+        public byte GetFullNeighborsCount(NodePosition position)
+        {
+            byte count = 0;
+
+            for (var i = 0; i < 8; i++)
+            {
+                var pos = position + Node.neighborPositions[i];
+                if (generatedPositions.Contains(pos))
+                    count++;
+            }
+
+            return count;
         }
     }
 }

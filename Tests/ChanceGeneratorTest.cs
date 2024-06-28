@@ -16,14 +16,12 @@ namespace ChanceGen.Tests
             [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.GenerateAmount))]
             (int genAmount, int nonInvalidMin) genInfo,
             [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.GenerateAddChance))]
-            float diffuseAddChance,
-            [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.BlockChance))]
-            float blockChance,
+            float diffuseBlockChance,
             [ValueSource(typeof(ChanceGeneratorDataProvider), nameof(ChanceGeneratorDataProvider.Seed))]
             uint seed)
         {
-            var generator = new ChanceGenerator(genInfo.genAmount, genInfo.nonInvalidMin, diffuseAddChance, blockChance,
-                seed);
+            var generator = new ChanceGenerator(genInfo.genAmount, genInfo.nonInvalidMin, diffuseBlockChance,
+                seed, new ConwayRule(8, 5, 0.78f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -51,10 +49,9 @@ namespace ChanceGen.Tests
         {
             get
             {
-                yield return 0.4f;
-                yield return 0.6f;
+                yield return 0.06f;
+                yield return 0.3f;
                 yield return 0.8f;
-                yield return 0.99f;
             }
         }
 
@@ -62,10 +59,9 @@ namespace ChanceGen.Tests
         {
             get
             {
-                yield return 0.05f;
+                yield return 0.015f;
                 yield return 0.1f;
-                yield return 0.2f;
-                yield return 0.5f;
+                yield return 0.25f;
             }
         }
 
