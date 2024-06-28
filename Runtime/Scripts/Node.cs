@@ -34,7 +34,7 @@ namespace ChanceGen
         #endregion
 
         public NodePosition position;
-        public bool invalid;
+        public bool blocked;
         public uint walkCount;
         public uint walkFromLastBranch;
         public Connections connections;
@@ -42,16 +42,20 @@ namespace ChanceGen
         public Node(int x, int y)
         {
             position = new NodePosition(x, y);
-            invalid = false;
+            blocked = false;
             walkCount = 0;
         }
 
         public Node(NodePosition position)
         {
             this.position = position;
-            invalid = false;
+            blocked = false;
             walkCount = 0;
         }
+
+        public override string ToString() =>
+            $"position: {position}, blocked: {blocked}, walkCount: {walkCount}, walkFromLastBranch: "
+            + $"{walkFromLastBranch}, connections: {connections}";
 
         public static explicit operator NodePosition(Node node) => node.position;
 

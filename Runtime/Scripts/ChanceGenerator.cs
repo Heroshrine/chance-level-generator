@@ -44,7 +44,7 @@ namespace ChanceGen
         {
             var startNode = new Node(0, 0);
             await Task.Run(() => NeighborDiffuse(in startNode), Application.exitCancellationToken);
-            //await Task.Run(() => generated.RemoveAll(n => n.invalid), Application.exitCancellationToken);
+            //await Task.Run(() => generated.RemoveAll(n => n.blocked), Application.exitCancellationToken);
             return generated.ToArray();
         }
 
@@ -73,7 +73,7 @@ namespace ChanceGen
 
                     node = new Node(allNeighbors[index])
                     {
-                        invalid = true
+                        blocked = true
                     };
                     generated.Add(node);
                     generatedPositions.Add(node.position);
@@ -96,7 +96,7 @@ namespace ChanceGen
             var neighbors = new HashSet<NodePosition>();
 
             Span<NodePosition> adj = stackalloc NodePosition[4];
-            foreach (var node in generated.Where(node => !node.invalid))
+            foreach (var node in generated.Where(node => !node.blocked))
             {
                 GetAdjacentNeighbors(in node.position, ref adj);
                 foreach (var n in adj)
@@ -118,7 +118,7 @@ namespace ChanceGen
         /// </summary>
         /// <param name="nodePosition">The node position to get adjacent neighbors of.</param>
         /// <param name="buffer4">The buffer to put the neighbors into.</param>
-        public static void GetAdjacentNeighbors(in NodePosition nodePosition, ref Span<NodePosition> buffer4)
+        public void GetAdjacentNeighbors(in NodePosition nodePosition, ref Span<NodePosition> buffer4)
         {
             Assert.IsTrue(buffer4.Length == 4, "Buffer length must be 4!");
 
@@ -141,7 +141,7 @@ namespace ChanceGen
         /// </summary>
         /// <param name="nodePosition">The node position to get the neighbors of.</param>
         /// <param name="buffer8">The buffer to put the neighbors into.</param>
-        public static void GetFullNeighbors(in NodePosition nodePosition, ref Span<NodePosition> buffer8)
+        public void GetFullNeighbors(in NodePosition nodePosition, ref Span<NodePosition> buffer8)
         {
             Assert.IsTrue(buffer8.Length == 8, "Buffer length must be 8!");
 
@@ -159,26 +159,19 @@ namespace ChanceGen
         /// </summary>
         /// <param name="node">The node position to get adjacent neighbors of.</param>
         /// <param name="buffer4">The buffer to put the neighbors into.</param>
-        protected void GetAdjacentNeighbors(Node node, ref Span<Node> buffer4)
+        public void GetAdjacentNeighbors(Node node, ref Span<Node> buffer4)
         {
             Assert.IsTrue(buffer4.Length == 4, "Buffer length must be 4!");
 
-            for (var i = 0; i < 8; i += 2)
+            for (int i = 0, j = 0; i < 4; i++, j += 2)
             {
                 buffer4[i] ??= new Node(0, 0);
-                buffer4[i].position = node.position + Node.neighborPositions[i];
+                buffer4[i].position = node.position + Node.neighborPositions[j];
 
-                if (!generated.Contains(buffer4[i]))
-                {
+                if (generated.TryGetValue(buffer4[i], out var found))
+                    buffer4[i] = found;
+                else
                     buffer4[i] = null;
-                    continue;
-                }
-
-                buffer4[i].invalid = node.invalid;
-                buffer4[i].walkCount = node.walkCount + 1;
-                buffer4[i].walkFromLastBranch = ConnectionsUtils.CountConnections(node.connections) > 2
-                    ? 0
-                    : node.walkFromLastBranch + 1;
             }
 
             var n = buffer4[1];
@@ -200,7 +193,7 @@ namespace ChanceGen
         /// </summary>
         /// <param name="node">The node position to get the neighbors of.</param>
         /// <param name="buffer8">The buffer to put the neighbors into.</param>
-        protected void GetFullNeighbors(Node node, ref Span<Node> buffer8)
+        public void GetFullNeighbors(Node node, ref Span<Node> buffer8)
         {
             Assert.IsTrue(buffer8.Length == 8, "Buffer length must be 8!");
 
@@ -209,17 +202,10 @@ namespace ChanceGen
                 buffer8[i] ??= new Node(0, 0);
                 buffer8[i].position = node.position + Node.neighborPositions[i];
 
-                if (!generated.Contains(buffer8[i]))
-                {
+                if (generated.TryGetValue(buffer8[i], out var found))
+                    buffer8[i] = found;
+                else
                     buffer8[i] = null;
-                    continue;
-                }
-
-                buffer8[i].invalid = node.invalid;
-                buffer8[i].walkCount = node.walkCount + 1;
-                buffer8[i].walkFromLastBranch = ConnectionsUtils.CountConnections(node.connections) > 2
-                    ? 0
-                    : node.walkFromLastBranch + 1;
             }
         }
     }
