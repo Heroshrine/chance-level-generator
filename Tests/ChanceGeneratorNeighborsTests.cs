@@ -20,7 +20,9 @@ namespace ChanceGen.Tests
                 nameof(ChanceGeneratorNeighborsDataProvider.Seeds))]
             uint seed)
         {
-            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(8, 4, 0.45f));
+            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
+                new ConwayRule(7, 8, 0.78f),
+                new ConwayRule(0, 2, 0.15f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -48,7 +50,9 @@ namespace ChanceGen.Tests
                 nameof(ChanceGeneratorNeighborsDataProvider.Seeds))]
             uint seed)
         {
-            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(8, 5, 0.78f));
+            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
+                new ConwayRule(7, 8, 0.78f),
+                new ConwayRule(0, 2, 0.15f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -80,7 +84,9 @@ namespace ChanceGen.Tests
                 nameof(ChanceGeneratorNeighborsDataProvider.Seeds))]
             uint seed)
         {
-            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(8, 5, 0.78f));
+            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
+                new ConwayRule(7, 8, 0.78f),
+                new ConwayRule(0, 2, 0.15f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -116,7 +122,9 @@ namespace ChanceGen.Tests
                 nameof(ChanceGeneratorNeighborsDataProvider.Seeds))]
             uint seed)
         {
-            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(8, 5, 0.78f));
+            var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
+                new ConwayRule(7, 8, 0.78f),
+                new ConwayRule(0, 2, 0.15f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }

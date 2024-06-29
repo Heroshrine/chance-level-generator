@@ -34,7 +34,7 @@ namespace ChanceGen
         #endregion
 
         public NodePosition position;
-        public BlockedType blocked;
+        public bool blocked;
         public uint walkCount;
         public uint walkFromLastBranch;
         public Connections connections;
@@ -42,14 +42,12 @@ namespace ChanceGen
         public Node(int x, int y)
         {
             position = new NodePosition(x, y);
-            blocked = BlockedType.None;
             walkCount = 0;
         }
 
         public Node(NodePosition position)
         {
             this.position = position;
-            blocked = BlockedType.None;
             walkCount = 0;
         }
 

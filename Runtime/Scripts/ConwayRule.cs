@@ -31,10 +31,10 @@ namespace ChanceGen
         [field: SerializeField, Range(0, 1), Tooltip("The chance that the rule will take effect.")]
         public float EffectChance { get; private set; }
 
-        public ConwayRule(byte limitLTET, byte limitGTET, float effectChance)
+        public ConwayRule(byte limitGTET, byte limitLTET, float effectChance)
         {
-            LimitLTET = limitLTET;
             LimitGTET = limitGTET;
+            LimitLTET = limitLTET;
             EffectChance = effectChance;
         }
 
