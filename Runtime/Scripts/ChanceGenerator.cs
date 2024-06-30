@@ -3,14 +3,11 @@
 #endif
 
 using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -215,7 +212,32 @@ namespace ChanceGen
             }
         }
 
-        protected HashSet<NodePosition> BridgeIslands()
+        protected void BridgeIslands()
+        {
+            List<HashSet<NodePosition>> islands = GetIslands();
+
+            var blocked = new Queue<NodePosition>(BlockedPositions);
+            Span<NodePosition> buffer4 = stackalloc NodePosition[4];
+            while (blocked.TryDequeue(out var position))
+            {
+                var islandIndexes = new List<int>();
+                GetAdjacentNeighbors(position, ref buffer4);
+
+                if (CountAdjacentIslands(buffer4, islands, islandIndexes) < 2) continue;
+
+                BlockedPositions.Remove(position);
+                GeneratedPositions.Add(position);
+
+                while (islandIndexes.Count > 1)
+                {
+                    islands[islandIndexes[0]].UnionWith(islands[islandIndexes[1]]);
+                    islands.RemoveAt(islandIndexes[1]);
+                    islandIndexes.RemoveAt(1);
+                }
+            }
+        }
+
+        private List<HashSet<NodePosition>> GetIslands()
         {
             List<HashSet<NodePosition>> islands = new();
 
@@ -229,40 +251,27 @@ namespace ChanceGen
                 positions = positions.Where(pos => !island.Contains(pos)).ToList();
             }
 
-            var blocked = new Queue<NodePosition>(BlockedPositions);
-            Span<NodePosition> buffer4 = stackalloc NodePosition[4];
-            while (blocked.TryDequeue(out var position))
+            return islands;
+        }
+
+        private byte CountAdjacentIslands(ReadOnlySpan<NodePosition> positionNeighbors,
+            List<HashSet<NodePosition>> islands,
+            List<int> islandIndexes)
+        {
+            byte adjacentIslands = 0;
+
+            for (var i = 0; i < islands.Count; i++)
             {
-                GetAdjacentNeighbors(position, ref buffer4);
-
-                var diffIslandsCount = 0;
-                var islandIndexes = new List<int>();
-
-                for (var i = 0; i < islands.Count; i++)
+                foreach (var p in positionNeighbors)
                 {
-                    foreach (var p in buffer4)
-                    {
-                        if (!islands[i].Contains(p) || islandIndexes.Contains(i)) continue;
-                        diffIslandsCount++;
-                        islandIndexes.Add(i);
-                        break;
-                    }
-                }
-
-                if (diffIslandsCount < 2) continue;
-
-                BlockedPositions.Remove(position);
-                GeneratedPositions.Add(position);
-
-                while (islandIndexes.Count > 1)
-                {
-                    islands[islandIndexes[0]].UnionWith(islands[islandIndexes[1]]);
-                    islands.RemoveAt(islandIndexes[1]);
-                    islandIndexes.RemoveAt(1);
+                    if (!islands[i].Contains(p) || islandIndexes.Contains(i)) continue;
+                    adjacentIslands++;
+                    islandIndexes.Add(i);
+                    break;
                 }
             }
 
-            return null;
+            return adjacentIslands;
         }
 
         public HashSet<NodePosition> WalkPositions(NodePosition startPosition)
