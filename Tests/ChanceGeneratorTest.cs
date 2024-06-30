@@ -21,7 +21,8 @@ namespace ChanceGen.Tests
             uint seed)
         {
             var generator = new ChanceGenerator(genInfo.genAmount, genInfo.nonInvalidMin, diffuseBlockChance,
-                seed, new ConwayRule(8, 5, 0.78f));
+                seed, new ConwayRule(5, 8, 0.78f), new ConwayRule(7, 8, 0.78f),
+                new ConwayRule(0, 2, 0.15f));
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
