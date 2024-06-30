@@ -22,13 +22,19 @@ using static ChanceGen.WalkUtils;
 
 namespace ChanceGen
 {
-    public class ChanceGenerator
+    public delegate void PositionGenerator(HashSet<NodePosition> generatedPositions,
+        HashSet<NodePosition> blockedPositions,
+        ref Random random);
+
+    public delegate void NodeGenerator(HashSet<Node> generatedPositions, ref Random random);
+
+    public sealed partial class ChanceGenerator
     {
         // TODO: decide what variables should be protected or private.
 
         #region properties and fields
 
-        protected internal HashSet<NodePosition> BlockedPositions
+        internal HashSet<NodePosition> BlockedPositions
         {
             get
             {
@@ -42,7 +48,7 @@ namespace ChanceGen
         [EditorBrowsable(EditorBrowsableState.Never)]
         private HashSet<NodePosition> _bnps = new();
 
-        protected internal HashSet<NodePosition> GeneratedPositions
+        internal HashSet<NodePosition> GeneratedPositions
         {
             get
             {
@@ -56,7 +62,7 @@ namespace ChanceGen
         [EditorBrowsable(EditorBrowsableState.Never)]
         private HashSet<NodePosition> _gnps = new();
 
-        protected internal HashSet<Node> Generated
+        internal HashSet<Node> Generated
         {
             get
             {
@@ -69,46 +75,55 @@ namespace ChanceGen
         [EditorBrowsable(EditorBrowsableState.Never)]
         private HashSet<Node> _gns;
 
-        protected readonly int generateAmount;
-        protected readonly int diffuseMinimum;
-        protected readonly float diffuseBlockChance;
+        private readonly int _diffuseAmount;
+        private readonly int _diffuseMinimum;
+        private readonly float _diffuseBlockChance;
 
         /// <summary>
         /// Controls if a cell can be selected by the diffuse generator, <br/>
         /// uses <see cref="ConwayRule.IfAnd"/> to check if the position can be blocked.
         /// </summary>
-        protected readonly ConwayRule diffuseSelectionRule;
+        private readonly ConwayRule _diffuseSelectionRule;
 
-        protected readonly ConwayRule removeRule;
-        protected readonly ConwayRule addRule;
+        private readonly ConwayRule _removeRule;
+        private readonly ConwayRule _addRule;
 
-        protected readonly int branchRequirement;
+        private readonly int _branchRequirement;
 
-        protected Random random;
+        private Random _random;
 
         private byte _isNodeAccessAllowed;
 
+
+        public event PositionGenerator AdditionalPositionGeneration;
+        public event NodeGenerator AdditionalNodeGeneration;
+
         #endregion
 
-        public ChanceGenerator(int generateAmount,
+        internal ChanceGenerator(int diffuseAmount,
             int diffuseMinimum,
             float diffuseBlockChance,
             uint seed,
             ConwayRule diffuseSelectionRule,
             ConwayRule removeRule,
             ConwayRule addRule,
-            int branchRequirement)
+            int branchRequirement,
+            PositionGenerator additionalPositionGeneration,
+            NodeGenerator additionalNodeGeneration)
         {
-            this.generateAmount = generateAmount;
-            this.diffuseBlockChance = diffuseBlockChance;
-            this.diffuseSelectionRule = diffuseSelectionRule;
-            this.removeRule = removeRule;
-            this.addRule = addRule;
-            this.branchRequirement = branchRequirement;
-            this.diffuseMinimum = diffuseMinimum;
-            random = new Random(seed);
+            _diffuseAmount = diffuseAmount;
+            _diffuseBlockChance = diffuseBlockChance;
+            _diffuseSelectionRule = diffuseSelectionRule;
+            _removeRule = removeRule;
+            _addRule = addRule;
+            _branchRequirement = branchRequirement;
+            _diffuseMinimum = diffuseMinimum;
+            _random = new Random(seed);
 
             Generated = new HashSet<Node>(diffuseMinimum, new Node.NodeComparer());
+
+            AdditionalPositionGeneration = additionalPositionGeneration;
+            AdditionalNodeGeneration = additionalNodeGeneration;
         }
 
         // TODO: require cancellation token as will most likely be called from MonoBehaviour. 
@@ -119,9 +134,11 @@ namespace ChanceGen
 
             await Task.Run(() => NeighborDiffuse(in startNode), Application.exitCancellationToken); // diffuse path
             await Task.Run(ConwayPass, Application.exitCancellationToken); // conway pass
-            await Task.Run(() => BridgeIslands(GeneratedPositions, BlockedPositions, ref random),
+            await Task.Run(() => BridgeIslands(GeneratedPositions, BlockedPositions, ref _random),
                 Application.exitCancellationToken); // reconnect islands
-            await Task.Run(AdditionalPositionGeneration, Application.exitCancellationToken);
+            await Task.Run(
+                () => AdditionalPositionGeneration?.Invoke(GeneratedPositions, BlockedPositions, ref _random),
+                Application.exitCancellationToken);
 
             _isNodeAccessAllowed = 1;
             await Task.Run(GenerateNodes, Application.exitCancellationToken); // generate nodes
@@ -129,12 +146,13 @@ namespace ChanceGen
             BlockedPositions = null;
             GeneratedPositions = null;
 
-            await Task.Run(AdditionalNodeGeneration, Application.exitCancellationToken);
+            await Task.Run(() => AdditionalNodeGeneration?.Invoke(Generated, ref _random),
+                Application.exitCancellationToken);
 
             Generated.TryGetValue(startNode, out var found);
             Assert.IsNotNull(found, "Start node not found in generated nodes!");
 
-            await Task.Run(() => WalkNodesAndApplyValues(found, Generated, branchRequirement),
+            await Task.Run(() => WalkNodesAndApplyValues(found, Generated, _branchRequirement),
                 Application.exitCancellationToken); // walk nodes
 
             return Generated.ToArray();
@@ -165,10 +183,10 @@ namespace ChanceGen
         }
 
         // diffuses from start node, adding neighbors to GeneratedPositions set.
-        protected virtual void NeighborDiffuse(in Node startNode)
+        private void NeighborDiffuse(in Node startNode)
         {
-            while (GeneratedPositions.Count + BlockedPositions.Count < generateAmount
-                   || GeneratedPositions.Count < diffuseMinimum)
+            while (GeneratedPositions.Count + BlockedPositions.Count < _diffuseAmount
+                   || GeneratedPositions.Count < _diffuseMinimum)
             {
                 Span<NodePosition> allNeighbors = GetAllAdjacentNeighbors(GeneratedPositions, BlockedPositions);
 
@@ -178,17 +196,17 @@ namespace ChanceGen
                     break;
                 }
 
-                var index = random.NextInt(0, allNeighbors.Length);
+                var index = _random.NextInt(0, allNeighbors.Length);
                 var neighborsCount = GetFullNeighborCount(allNeighbors[index], GeneratedPositions);
                 byte blockedType = 0;
 
                 // TODO: only calculate this if Generated.Count > diffuseMinimum
-                if (diffuseSelectionRule.IfAnd(neighborsCount, ref random))
+                if (_diffuseSelectionRule.IfAnd(neighborsCount, ref _random))
                     blockedType = 1;
-                else if (random.NextFloat() <= diffuseBlockChance)
+                else if (_random.NextFloat() <= _diffuseBlockChance)
                     blockedType = 2;
 
-                if (GeneratedPositions.Count > diffuseMinimum
+                if (GeneratedPositions.Count > _diffuseMinimum
                     && blockedType is 1 or 2)
                 {
                     BlockedPositions.Add(allNeighbors[index]);
@@ -200,7 +218,7 @@ namespace ChanceGen
         }
 
         // uses remove and add rules to determine if a node should be removed or added.
-        protected virtual void ConwayPass()
+        private void ConwayPass()
         {
             Span<NodePosition> removing = GeneratedPositions.ToArray();
 
@@ -208,7 +226,7 @@ namespace ChanceGen
             {
                 var neighborCount = GetFullNeighborCount(nodePosition, GeneratedPositions);
 
-                if (GeneratedPositions.Contains(nodePosition) && removeRule.IfAnd(neighborCount, ref random))
+                if (GeneratedPositions.Contains(nodePosition) && _removeRule.IfAnd(neighborCount, ref _random))
                 {
                     GeneratedPositions.Remove(nodePosition);
                     BlockedPositions.Add(nodePosition);
@@ -219,12 +237,9 @@ namespace ChanceGen
             foreach (var position in allNodePositions)
             {
                 var neighborCount = GetFullNeighborCount(position, GeneratedPositions);
-                if (addRule.IfAnd(neighborCount, ref random))
+                if (_addRule.IfAnd(neighborCount, ref _random))
                     GeneratedPositions.Add(position);
             }
         }
-
-        protected virtual void AdditionalPositionGeneration() { }
-        protected virtual void AdditionalNodeGeneration() { }
     }
 }
