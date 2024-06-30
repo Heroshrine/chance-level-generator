@@ -158,17 +158,16 @@ namespace ChanceGen
 
                 var index = random.NextInt(0, allNeighbors.Length);
                 var neighborsCount = GetFullNeighborCount(allNeighbors[index]);
-                var blockedType = BlockedType.None;
+                byte blockedType = 0;
 
                 // TODO: only calculate this if Generated.Count > diffuseMinimum
                 if (diffuseSelectionRule.IfAnd(neighborsCount, ref random))
-                    blockedType = BlockedType.ConwayBlocked;
+                    blockedType = 1;
                 else if (random.NextFloat() <= diffuseBlockChance)
-                    blockedType = BlockedType.DiffuseBlocked;
+                    blockedType = 2;
 
-                if ((GeneratedPositions.Count > diffuseMinimum
-                     && blockedType != BlockedType.None)
-                    || blockedType == BlockedType.ConwayBlocked)
+                if (GeneratedPositions.Count > diffuseMinimum
+                    && blockedType is 1 or 2)
                 {
                     BlockedPositions.Add(allNeighbors[index]);
                     continue;
