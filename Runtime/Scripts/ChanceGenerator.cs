@@ -25,67 +25,54 @@ namespace ChanceGen
     {
         // TODO: decide what variables should be protected or private.
 
-        #region property backing fields
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private HashSet<NodePosition> _bnps = new();
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private HashSet<NodePosition> _gnps = new();
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private HashSet<Node> _gns;
-
-        #endregion
-
         protected HashSet<NodePosition> BlockedPositions
         {
             get
             {
-                /*Do Assertion*/
+                Assert.IsFalse(_isNodeAccessAllowed >= 2,
+                    "Cannot access blocked positions hash set after node generation started!");
                 return _bnps;
             }
-            private set
-            {
-                /*Do Assertion*/
-                _bnps = value;
-            }
+            private set { _bnps = value; }
         }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private HashSet<NodePosition> _bnps = new();
 
         protected HashSet<NodePosition> GeneratedPositions
         {
             get
             {
-                /*Do Assertion*/
+                Assert.IsFalse(_isNodeAccessAllowed >= 2,
+                    "Cannot access positions hash set after node generation started!");
                 return _gnps;
             }
-            private set
-            {
-                /*Do Assertion*/
-                _gnps = value;
-            }
+            private set { _gnps = value; }
         }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private HashSet<NodePosition> _gnps = new();
 
         protected HashSet<Node> Generated
         {
             get
             {
-                /*Do Assertion*/
+                Assert.IsTrue(_isNodeAccessAllowed >= 1, "Cannot access nodes hash set until node generation started!");
                 return _gns;
             }
-            private set
-            {
-                /*Do Assertion*/
-                _gns = value;
-            }
+            private set { _gns = value; }
         }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private HashSet<Node> _gns;
 
         protected readonly int generateAmount;
         protected readonly int diffuseMinimum;
         protected readonly float diffuseBlockChance;
 
         /// <summary>
-        /// Controls if a cell can be selected by the diffuse generator, uses <see cref="ConwayRule.IfAnd"/>.
+        /// Controls if a cell can be selected by the diffuse generator, <br/>
+        /// uses <see cref="ConwayRule.IfAnd"/> to check if the position can be blocked.
         /// </summary>
         protected readonly ConwayRule diffuseSelectionRule;
 
@@ -93,6 +80,8 @@ namespace ChanceGen
         protected readonly ConwayRule addRule;
 
         protected Random random;
+
+        private byte _isNodeAccessAllowed;
 
         public ChanceGenerator(int generateAmount,
             int diffuseMinimum,
@@ -122,7 +111,9 @@ namespace ChanceGen
             await Task.Run(() => NeighborDiffuse(in startNode), Application.exitCancellationToken); // diffuse path
             await Task.Run(ConwayPass, Application.exitCancellationToken); // conway pass
             await Task.Run(BridgeIslands, Application.exitCancellationToken); // reconnect islands
+            _isNodeAccessAllowed = 1;
             await Task.Run(GenerateNodes, Application.exitCancellationToken); // generate nodes
+            _isNodeAccessAllowed = 2;
             BlockedPositions = null;
             GeneratedPositions = null;
 
@@ -296,7 +287,6 @@ namespace ChanceGen
             return walked;
         }
 
-        // TODO: only usable in certain stage, if not in correct stage assert and direct to GetGeneratedAllAdjacentNeighbors (which is slower).
         /// <summary>
         /// Gets all adjacent neighbors for every Generated node.
         /// </summary>
@@ -360,7 +350,6 @@ namespace ChanceGen
                 buffer8[i] = nodePosition + Node.neighborPositions[i];
         }
 
-        // TODO: only usable in certain stage, if not in correct stage assert and direct to other GetAdjacentNeighborCount
         /// <summary>
         /// Gets the count of the existing neighbors of this node. Depending on the stage of generation,
         /// this can count blocked nodes as well.
@@ -381,7 +370,6 @@ namespace ChanceGen
             return count;
         }
 
-        // TODO: only usable in certain stage, if not in correct stage assert and direct to other GetFullNeighborCount
         /// <summary>
         /// Gets the full (adjacents and diagonals) count of neighbors of this node. Depending on the stage of generation,
         /// this can count blocked nodes as well.
