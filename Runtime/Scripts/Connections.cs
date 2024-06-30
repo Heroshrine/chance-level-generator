@@ -7,9 +7,9 @@ namespace ChanceGen
     {
         None = 0,
         Up = 1,
-        Down = 1 << 2,
-        Left = 1 << 3,
-        Right = 1 << 1,
+        Down = 1 << 1,
+        Left = 1 << 2,
+        Right = 1 << 3,
         All = Up | Down | Left | Right
     }
 
@@ -18,9 +18,9 @@ namespace ChanceGen
         public static int CountConnections(Connections connections)
         {
             return (int)(connections & Connections.Up)
-                   + ((int)(connections & Connections.Down) >> 2)
-                   + ((int)(connections & Connections.Left) >> 3)
-                   + ((int)(connections & Connections.Right) >> 1);
+                   + ((int)(connections & Connections.Down) >> 1)
+                   + ((int)(connections & Connections.Left) >> 2)
+                   + ((int)(connections & Connections.Right) >> 3);
         }
     }
 }

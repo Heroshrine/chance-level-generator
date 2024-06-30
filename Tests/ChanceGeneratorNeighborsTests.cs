@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using Assert = UnityEngine.Assertions.Assert;
+using static ChanceGen.NeighborUtils;
 
 namespace ChanceGen.Tests
 {
@@ -22,7 +23,7 @@ namespace ChanceGen.Tests
         {
             var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
                 new ConwayRule(7, 8, 0.78f),
-                new ConwayRule(0, 2, 0.15f));
+                new ConwayRule(0, 2, 0.15f), 3);
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -30,7 +31,7 @@ namespace ChanceGen.Tests
             Debug.Log($"Checking from: {position}");
 
             Span<NodePosition> neighbors = stackalloc NodePosition[4];
-            generator.GetAdjacentNeighbors(position, ref neighbors);
+            GetAdjacentNeighbors(position, ref neighbors);
 
             Assert.IsTrue(neighbors[0].x == position.x && neighbors[0].y == position.y + 1);
             Assert.IsTrue(neighbors[1].x == position.x && neighbors[1].y == position.y - 1);
@@ -52,7 +53,7 @@ namespace ChanceGen.Tests
         {
             var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
                 new ConwayRule(7, 8, 0.78f),
-                new ConwayRule(0, 2, 0.15f));
+                new ConwayRule(0, 2, 0.15f), 3);
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -60,7 +61,7 @@ namespace ChanceGen.Tests
             Debug.Log($"Checking from: {position}");
 
             Span<NodePosition> neighbors = stackalloc NodePosition[8];
-            generator.GetFullNeighbors(position, ref neighbors);
+            GetFullNeighbors(position, ref neighbors);
 
             Assert.IsTrue(neighbors[0].x == position.x && neighbors[0].y == position.y + 1);
             Assert.IsTrue(neighbors[1].x == position.x + 1 && neighbors[1].y == position.y + 1);
@@ -86,7 +87,7 @@ namespace ChanceGen.Tests
         {
             var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
                 new ConwayRule(7, 8, 0.78f),
-                new ConwayRule(0, 2, 0.15f));
+                new ConwayRule(0, 2, 0.15f), 3);
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -94,7 +95,7 @@ namespace ChanceGen.Tests
             Debug.Log($"Checking from: {node}");
 
             Span<Node> neighbors = new Node[4];
-            generator.GetAdjacentNeighbors(node, ref neighbors);
+            GetAdjacentNeighbors(node, ref neighbors, generator.Generated);
 
             Assert.IsTrue(neighbors[0] == null
                           || (neighbors[0].position.x == node.position.x
@@ -124,7 +125,7 @@ namespace ChanceGen.Tests
         {
             var generator = new ChanceGenerator(40, 12, 0.06f, seed, new ConwayRule(5, 8, 0.78f),
                 new ConwayRule(7, 8, 0.78f),
-                new ConwayRule(0, 2, 0.15f));
+                new ConwayRule(0, 2, 0.15f), 3);
             Task<ReadOnlyMemory<Node>> task = Task.Run(generator.Generate, Application.exitCancellationToken);
 
             while (!task.IsCompleted) { }
@@ -132,7 +133,7 @@ namespace ChanceGen.Tests
             Debug.Log($"Checking from: {node}");
 
             Span<Node> neighbors = new Node[8];
-            generator.GetFullNeighbors(node, ref neighbors);
+            GetFullNeighbors(node, ref neighbors, generator.Generated);
 
             Assert.IsTrue(neighbors[0] == null
                           || (neighbors[0].position.x == node.position.x

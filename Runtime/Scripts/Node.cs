@@ -35,25 +35,23 @@ namespace ChanceGen
 
         public NodePosition position;
         public bool blocked;
-        public uint walkCount;
-        public uint walkFromLastBranch;
-        public Connections connections;
+        public NodeInfo nodeInfo;
 
         public Node(int x, int y)
         {
             position = new NodePosition(x, y);
-            walkCount = 0;
+            nodeInfo = new NodeInfo { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
         }
 
         public Node(NodePosition position)
         {
             this.position = position;
-            walkCount = 0;
+            nodeInfo = new NodeInfo { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
         }
 
         public override string ToString() =>
-            $"position: {position}, blocked: {blocked}, walkCount: {walkCount}, walkFromLastBranch: "
-            + $"{walkFromLastBranch}, connections: {connections}";
+            $"position: {position}, blocked: {blocked}, walkCount: {nodeInfo.walkCount}, walkFromLastBranch: "
+            + $"{nodeInfo.walkFromLastBranch}, connections: {nodeInfo.connections}";
 
         public static explicit operator NodePosition(Node node) => node.position;
 
@@ -61,6 +59,28 @@ namespace ChanceGen
         {
             public bool Equals(Node x, Node y) => x?.position == y?.position;
             public int GetHashCode(Node obj) => obj.position.GetHashCode();
+        }
+    }
+
+    [Serializable]
+    public struct NodeInfo
+    {
+        public int walkCount;
+        public int walkFromLastBranch;
+        public Connections connections;
+
+        public void Deconstruct(out int walkCount, out int walkFromLastBranch, out Connections connections)
+        {
+            walkCount = this.walkCount;
+            walkFromLastBranch = this.walkFromLastBranch;
+            connections = this.connections;
+        }
+
+        public NodeInfo(int walkCount, int walkFromLastBranch, Connections connections)
+        {
+            this.walkCount = walkCount;
+            this.walkFromLastBranch = walkFromLastBranch;
+            this.connections = connections;
         }
     }
 
@@ -73,6 +93,12 @@ namespace ChanceGen
         {
             this.x = x;
             this.y = y;
+        }
+
+        public readonly void Deconstruct(out int x, out int y)
+        {
+            x = this.x;
+            y = this.y;
         }
 
         public override string ToString() => $"({x}, {y})";
