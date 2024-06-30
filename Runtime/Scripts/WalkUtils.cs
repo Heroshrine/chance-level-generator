@@ -35,7 +35,7 @@ namespace ChanceGen
         /// <summary>
         /// Walks the supplied nodes hash set from the supplied start node - assuming that the start node is
         /// in the hash set - and applies the walk count and walk from last branch values to each node. This
-        /// overrides existing values. To copy values into a dictionary, use <see cref="WalkNodes"/>.
+        /// overrides existing values.
         /// </summary>
         /// <param name="startNode">The node to walk from.</param>
         /// <param name="generatedNodes">The nodes to walk.</param>

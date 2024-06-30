@@ -121,14 +121,17 @@ namespace ChanceGen
             await Task.Run(ConwayPass, Application.exitCancellationToken); // conway pass
             await Task.Run(() => BridgeIslands(GeneratedPositions, BlockedPositions, ref random),
                 Application.exitCancellationToken); // reconnect islands
+            await Task.Run(AdditionalPositionGeneration, Application.exitCancellationToken);
+
             _isNodeAccessAllowed = 1;
             await Task.Run(GenerateNodes, Application.exitCancellationToken); // generate nodes
             _isNodeAccessAllowed = 2;
             BlockedPositions = null;
             GeneratedPositions = null;
 
-            Generated.TryGetValue(startNode, out var found);
+            await Task.Run(AdditionalNodeGeneration, Application.exitCancellationToken);
 
+            Generated.TryGetValue(startNode, out var found);
             Assert.IsNotNull(found, "Start node not found in generated nodes!");
 
             await Task.Run(() => WalkNodesAndApplyValues(found, Generated, branchRequirement),
@@ -220,5 +223,8 @@ namespace ChanceGen
                     GeneratedPositions.Add(position);
             }
         }
+
+        protected virtual void AdditionalPositionGeneration() { }
+        protected virtual void AdditionalNodeGeneration() { }
     }
 }
