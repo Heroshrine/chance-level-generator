@@ -38,6 +38,13 @@ namespace ChanceGen
             EffectChance = effectChance;
         }
 
+        public readonly void Deconstruct(out byte limitGTET, out byte limitLTET, out float effectChance)
+        {
+            limitGTET = LimitGTET;
+            limitLTET = LimitLTET;
+            effectChance = EffectChance;
+        }
+
         /// <summary>
         /// Evaluates if the neighbor count is less than or equal to <see cref="LimitLTET"/> and greater than or equal to <see cref="LimitGTET"/>, using the <see cref="EffectChance"/>.
         /// </summary>
