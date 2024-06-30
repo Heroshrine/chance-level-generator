@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-//#define CHANCEGEN_DEBUG
+#define CHANCEGEN_DEBUG
 #endif
 
 using System;
@@ -82,6 +82,8 @@ namespace ChanceGen
         protected readonly ConwayRule removeRule;
         protected readonly ConwayRule addRule;
 
+        protected readonly int branchRequirement;
+
         protected Random random;
 
         private byte _isNodeAccessAllowed;
@@ -94,13 +96,15 @@ namespace ChanceGen
             uint seed,
             ConwayRule diffuseSelectionRule,
             ConwayRule removeRule,
-            ConwayRule addRule)
+            ConwayRule addRule,
+            int branchRequirement)
         {
             this.generateAmount = generateAmount;
             this.diffuseBlockChance = diffuseBlockChance;
             this.diffuseSelectionRule = diffuseSelectionRule;
             this.removeRule = removeRule;
             this.addRule = addRule;
+            this.branchRequirement = branchRequirement;
             this.diffuseMinimum = diffuseMinimum;
             random = new Random(seed);
 
@@ -122,6 +126,13 @@ namespace ChanceGen
             _isNodeAccessAllowed = 2;
             BlockedPositions = null;
             GeneratedPositions = null;
+
+            Generated.TryGetValue(startNode, out var found);
+
+            Assert.IsNotNull(found, "Start node not found in generated nodes!");
+
+            await Task.Run(() => WalkNodesAndApplyValues(found, Generated, branchRequirement),
+                Application.exitCancellationToken); // walk nodes
 
             return Generated.ToArray();
         }

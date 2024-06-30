@@ -139,8 +139,8 @@ namespace ChanceGen
                 buffer4[i] ??= new Node(0, 0);
                 buffer4[i].position = node.position + Node.neighborPositions[j];
 
-                if (generatedNodes.TryGetValue(buffer4[i], out var found))
-                    buffer4[i] = found;
+                if (generatedNodes.TryGetValue(buffer4[i], out var found) && !found.blocked)
+                    buffer4[i].position = found.position;
                 else
                     buffer4[i] = null;
             }
@@ -177,7 +177,7 @@ namespace ChanceGen
                 buffer8[i].position = node.position + Node.neighborPositions[i];
 
                 if (generatedNodes.TryGetValue(buffer8[i], out var found))
-                    buffer8[i] = found;
+                    buffer8[i].position = found.position;
                 else
                     buffer8[i] = null;
             }

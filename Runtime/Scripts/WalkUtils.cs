@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Random = Unity.Mathematics.Random;
 using static ChanceGen.NeighborUtils;
 
@@ -29,6 +30,70 @@ namespace ChanceGen
             }
 
             return walked;
+        }
+
+        /// <summary>
+        /// Walks the supplied nodes hash set from the supplied start node - assuming that the start node is
+        /// in the hash set - and applies the walk count and walk from last branch values to each node. This
+        /// overrides existing values. To copy values into a dictionary, use <see cref="WalkNodes"/>.
+        /// </summary>
+        /// <param name="startNode">The node to walk from.</param>
+        /// <param name="generatedNodes">The nodes to walk.</param>
+        /// <param name="branchRequirement">How many nodes a node need to connect to to reset the walk branch value.</param>
+        public static void WalkNodesAndApplyValues(Node startNode,
+            HashSet<Node> generatedNodes,
+            int branchRequirement)
+        {
+            HashSet<Node> walked = new();
+            Queue<Node> walkQueue = new();
+            Span<Node> buffer4 = new Node[4];
+
+            startNode.nodeInfo.walkCount = 0;
+            startNode.nodeInfo.walkFromLastBranch = 0;
+            walkQueue.Enqueue(startNode);
+
+            while (walkQueue.TryDequeue(out var working))
+            {
+                GetAdjacentNeighbors(working, ref buffer4, generatedNodes);
+                for (var i = 0; i < buffer4.Length; i++)
+                {
+                    if (buffer4[i] is null
+                        || !generatedNodes.TryGetValue(buffer4[i], out var found))
+                        continue;
+
+                    working.nodeInfo.connections |= i switch
+                    {
+                        0 => Connections.Down,
+                        1 => Connections.Up,
+                        2 => Connections.Right,
+                        3 => Connections.Left,
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+
+                    if (found.nodeInfo.walkCount == -1
+                        || found.nodeInfo.walkCount > working.nodeInfo.walkCount + 1)
+                        found.nodeInfo.walkCount = working.nodeInfo.walkCount + 1;
+
+                    if (walked.Contains(found)) continue;
+
+                    walkQueue.Enqueue(found);
+                    walked.Add(working);
+                }
+
+                if (ConnectionsUtils.CountConnections(working.nodeInfo.connections) >= branchRequirement)
+                    working.nodeInfo.walkFromLastBranch = 0;
+
+                foreach (var node in buffer4)
+                {
+                    if (node is null
+                        || !generatedNodes.TryGetValue(node, out var found))
+                        continue;
+
+                    if (found.nodeInfo.walkFromLastBranch == -1
+                        || found.nodeInfo.walkFromLastBranch > working.nodeInfo.walkFromLastBranch + 1)
+                        found.nodeInfo.walkFromLastBranch = working.nodeInfo.walkFromLastBranch + 1;
+                }
+            }
         }
 
         internal static void BridgeIslands(HashSet<NodePosition> generatedPositions,
