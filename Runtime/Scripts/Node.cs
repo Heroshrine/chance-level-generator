@@ -5,7 +5,11 @@ using UnityEngine;
 
 namespace ChanceGen
 {
-    public class Node
+    /// <summary>
+    /// A class that describes a relationship of <see cref="NodeData"/> to a <see cref="NodePosition"/> generated
+    /// by a <see cref="ChanceGenerator"/> instance.
+    /// </summary>
+    public sealed class Node
     {
         #region static
 
@@ -33,25 +37,36 @@ namespace ChanceGen
 
         #endregion
 
+        /// <summary>
+        /// The node position of this node.
+        /// </summary>
         public NodePosition position;
+
+        /// <summary>
+        /// If the node is blocked. Is only ever true when #CHANCEGEN_DEBUG is defined.
+        /// </summary>
         public bool blocked;
-        public NodeInfo nodeInfo;
+
+        /// <summary>
+        /// The data the node holds in relation to its <see cref="position"/>.
+        /// </summary>
+        public NodeData nodeData;
 
         public Node(int x, int y)
         {
             position = new NodePosition(x, y);
-            nodeInfo = new NodeInfo { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
+            nodeData = new NodeData { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
         }
 
         public Node(NodePosition position)
         {
             this.position = position;
-            nodeInfo = new NodeInfo { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
+            nodeData = new NodeData { walkCount = -1, walkFromLastBranch = -1, connections = Connections.None };
         }
 
         public override string ToString() =>
-            $"position: {position}, blocked: {blocked}, walkCount: {nodeInfo.walkCount}, walkFromLastBranch: "
-            + $"{nodeInfo.walkFromLastBranch}, connections: {nodeInfo.connections}";
+            $"position: {position}, blocked: {blocked}, walkCount: {nodeData.walkCount}, walkFromLastBranch: "
+            + $"{nodeData.walkFromLastBranch}, connections: {nodeData.connections}";
 
         public static explicit operator NodePosition(Node node) => node.position;
 
@@ -62,11 +77,26 @@ namespace ChanceGen
         }
     }
 
+    /// <summary>
+    /// Information held by a node.
+    /// </summary>
     [Serializable]
-    public struct NodeInfo
+    public struct NodeData
     {
+        /// <summary>
+        /// The walk count of the node, counting up from the last chosen walk location.
+        /// </summary>
         public int walkCount;
+
+        /// <summary>
+        /// The walk count from the last branch, counting up from the last chosen walk location.
+        /// The first chosen walk location counts as having branches, even if it doesn't.
+        /// </summary>
         public int walkFromLastBranch;
+
+        /// <summary>
+        /// The connections the node has.
+        /// </summary>
         public Connections connections;
 
         public void Deconstruct(out int walkCount, out int walkFromLastBranch, out Connections connections)
@@ -76,7 +106,7 @@ namespace ChanceGen
             connections = this.connections;
         }
 
-        public NodeInfo(int walkCount, int walkFromLastBranch, Connections connections)
+        public NodeData(int walkCount, int walkFromLastBranch, Connections connections)
         {
             this.walkCount = walkCount;
             this.walkFromLastBranch = walkFromLastBranch;
@@ -84,9 +114,22 @@ namespace ChanceGen
         }
     }
 
+    /// <summary>
+    /// Describes a node position.
+    /// <br/><br/>
+    /// Can be implicitly converted to <see cref="int2"/> and <see cref="Vector2Int"/>.<br/>
+    /// Can be explicitly converted from <see cref="int2"/> and <see cref="Vector2Int"/>.
+    /// </summary>
     public readonly struct NodePosition
     {
+        /// <summary>
+        /// The x coordinate of the position.
+        /// </summary>
         public readonly int x;
+
+        /// <summary>
+        /// The y coordinate of the position.
+        /// </summary>
         public readonly int y;
 
         public NodePosition(int x, int y)
@@ -102,7 +145,7 @@ namespace ChanceGen
         }
 
         public override string ToString() => $"({x}, {y})";
-        public bool Equals(NodePosition other) => x == other.x && y == other.y;
+        private bool Equals(NodePosition other) => x == other.x && y == other.y;
         public override bool Equals(object obj) => obj is NodePosition other && Equals(other);
         public override int GetHashCode() => HashCode.Combine(x, y);
 
