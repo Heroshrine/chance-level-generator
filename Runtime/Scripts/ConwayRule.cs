@@ -18,7 +18,7 @@ namespace ChanceGen
 
         /// <summary>
         /// Stands for Greater Than or Equal To.
-        /// THe neighbor count must be greater than or equal to this number for the rule to take effect.
+        /// The neighbor count must be greater than or equal to this number for the rule to take effect.
         /// </summary>
         [field: SerializeField, Range(0, 8), Tooltip(
                     "Stands for Greater Than or Equal To. The neighbor count must be greater than"

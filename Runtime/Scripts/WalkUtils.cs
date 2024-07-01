@@ -1,14 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using Random = Unity.Mathematics.Random;
 using static ChanceGen.NeighborUtils;
 
 namespace ChanceGen
 {
+    /// <summary>
+    /// A collection of utility methods relating to walking through generated positions and nodes.
+    /// </summary>
     public static class WalkUtils
     {
+        /// <summary>
+        /// Returns a hash set of contiguous positions from the supplied start position. Assumes that the supplied
+        /// start positions exists. Supplying a position that does not exist in the hash set results in undefined behaviour.
+        /// </summary>
+        /// <param name="startPosition">The position to walk from.</param>
+        /// <param name="generatedPositions">The currently generated positions.</param>
+        /// <returns>A hash set of <see cref="NodePosition"/>s, contiguous with the supplied
+        ///     <see cref="startPosition"/>.</returns>
         public static HashSet<NodePosition> WalkPositions(NodePosition startPosition,
             HashSet<NodePosition> generatedPositions)
         {
@@ -35,7 +45,7 @@ namespace ChanceGen
         /// <summary>
         /// Walks the supplied nodes hash set from the supplied start node - assuming that the start node is
         /// in the hash set - and applies the walk count and walk from last branch values to each node. This
-        /// overrides existing values.
+        /// overrides existing values. Supplying a node that does not exist in the hash set results in undefined behaviour.
         /// </summary>
         /// <param name="startNode">The node to walk from.</param>
         /// <param name="generatedNodes">The nodes to walk.</param>
@@ -48,8 +58,8 @@ namespace ChanceGen
             Queue<Node> walkQueue = new();
             Span<Node> buffer4 = new Node[4];
 
-            startNode.nodeInfo.walkCount = 0;
-            startNode.nodeInfo.walkFromLastBranch = 0;
+            startNode.nodeData.walkCount = 0;
+            startNode.nodeData.walkFromLastBranch = 0;
             walkQueue.Enqueue(startNode);
 
             while (walkQueue.TryDequeue(out var working))
@@ -61,7 +71,7 @@ namespace ChanceGen
                         || !generatedNodes.TryGetValue(buffer4[i], out var found))
                         continue;
 
-                    working.nodeInfo.connections |= i switch
+                    working.nodeData.connections |= i switch
                     {
                         0 => Connections.Down,
                         1 => Connections.Up,
@@ -70,9 +80,9 @@ namespace ChanceGen
                         _ => throw new ArgumentOutOfRangeException()
                     };
 
-                    if (found.nodeInfo.walkCount == -1
-                        || found.nodeInfo.walkCount > working.nodeInfo.walkCount + 1)
-                        found.nodeInfo.walkCount = working.nodeInfo.walkCount + 1;
+                    if (found.nodeData.walkCount == -1
+                        || found.nodeData.walkCount > working.nodeData.walkCount + 1)
+                        found.nodeData.walkCount = working.nodeData.walkCount + 1;
 
                     if (walked.Contains(found)) continue;
 
@@ -80,8 +90,8 @@ namespace ChanceGen
                     walked.Add(working);
                 }
 
-                if (ConnectionsUtils.CountConnections(working.nodeInfo.connections) >= branchRequirement)
-                    working.nodeInfo.walkFromLastBranch = 0;
+                if (ConnectionsUtils.CountConnections(working.nodeData.connections) >= branchRequirement)
+                    working.nodeData.walkFromLastBranch = 0;
 
                 foreach (var node in buffer4)
                 {
@@ -89,13 +99,14 @@ namespace ChanceGen
                         || !generatedNodes.TryGetValue(node, out var found))
                         continue;
 
-                    if (found.nodeInfo.walkFromLastBranch == -1
-                        || found.nodeInfo.walkFromLastBranch > working.nodeInfo.walkFromLastBranch + 1)
-                        found.nodeInfo.walkFromLastBranch = working.nodeInfo.walkFromLastBranch + 1;
+                    if (found.nodeData.walkFromLastBranch == -1
+                        || found.nodeData.walkFromLastBranch > working.nodeData.walkFromLastBranch + 1)
+                        found.nodeData.walkFromLastBranch = working.nodeData.walkFromLastBranch + 1;
                 }
             }
         }
 
+        // connects islands to make the entire generated level contiguous
         internal static void BridgeIslands(HashSet<NodePosition> generatedPositions,
             HashSet<NodePosition> blockedPositions,
             ref Random random)
@@ -123,6 +134,7 @@ namespace ChanceGen
             }
         }
 
+        // finds and returns islands from the supplied hash set of generated positions
         private static List<HashSet<NodePosition>> GetIslands(HashSet<NodePosition> generatedPositions,
             ref Random random)
         {
@@ -142,6 +154,7 @@ namespace ChanceGen
             return islands;
         }
 
+        // counts islands in the supplied list
         private static byte CountAdjacentIslands(ReadOnlySpan<NodePosition> positionNeighbors,
             List<HashSet<NodePosition>> islands,
             List<int> islandIndexes)
