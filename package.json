@@ -1,8 +1,8 @@
 {
   "name": "com.heroshrine.chancegen",
-  "version": "0.5.0",
+  "version": "0.4.0",
   "displayName": "Chance Level Generator",
-  "description": "Generates a level using a spiral pattern with an increasing chance of skipping the placement of rooms, then performs a pass of rulesets inspired by Conway's Game of Life.",
+  "description": "Generates a level using a modified diffusion method, then performs a pass of rulesets inspired by Conway's Game of Life.",
   "unity": "2022.3",
   "documentationUrl": "TODO: ADD LATER",
   "changelogUrl": "https://github.com/Heroshrine/ChanceLevelGenerator/blob/main/CHANGELOG.md",
