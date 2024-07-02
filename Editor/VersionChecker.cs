@@ -15,7 +15,7 @@ namespace ChanceGen.Editor
     public class VersionChecker
     {
         private const string c_KEY = "chancegenversioncheckingupm2022";
-        private const string c_NEVER_KEY = "chancegenversioncheckingupm2022";
+        private const string c_NEVER_KEY = "chancegenversioncheckingupm2022-never";
         private const string c_PACKAGE_NAME = "com.heroshrine.chancegen";
 
         private const string c_URL =
@@ -26,6 +26,8 @@ namespace ChanceGen.Editor
 
         static VersionChecker()
         {
+            if (EditorPrefs.HasKey(c_NEVER_KEY) || SessionState.GetBool(c_KEY, false)) return;
+
             CheckVersion().ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -126,6 +128,27 @@ namespace ChanceGen.Editor
             return decoded;
         }
 
-        private static void DisplayUpdateDialog() { }
+        [MenuItem("Tools/ChanceGen/Check for updates")]
+        private static void DisplayUpdateDialog()
+        {
+            var choice = EditorUtility.DisplayDialogComplex("Chance Level Generator Update",
+                "An update for the installed chance-level-generator package was detected. "
+                + "Would you like to open the package manager now?",
+                "Yes", "Don't Notify Me of Updates", "No");
+
+            switch (choice)
+            {
+                case 0:
+                    UnityEditor.PackageManager.UI.Window.Open("com.heroshrine.chancegen");
+                    SessionState.SetBool(c_KEY, true);
+                    break;
+                case 1:
+                    EditorPrefs.SetBool(c_NEVER_KEY, true);
+                    break;
+                case 2:
+                    SessionState.SetBool(c_KEY, true);
+                    break;
+            }
+        }
     }
 }
