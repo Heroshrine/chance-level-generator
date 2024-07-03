@@ -121,7 +121,8 @@ namespace ChanceGen.Editor
 
             if (!response.IsSuccessStatusCode)
             {
-                Debug.LogError("Not successful"); // fail silently once feature complete
+                Debug.LogWarning(
+                    $"request failure! chance-level-generator repo api access code: {response.StatusCode}");
                 return null;
             }
 
