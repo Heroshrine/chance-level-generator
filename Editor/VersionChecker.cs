@@ -12,21 +12,27 @@ using UnityEngine;
 namespace ChanceGen.Editor
 {
     [InitializeOnLoad]
-    public class VersionChecker
+    public sealed class VersionChecker
     {
-        private const string c_KEY = "chancegenversioncheckingupm2022";
-        private const string c_NEVER_KEY = "chancegenversioncheckingupm2022-never";
+        private const string c_KEY_ASKED = "chancegenversioncheckingupm";
+        private const string c_KEY_TYPE = "chancegenversioncheckingupm-type";
         private const string c_PACKAGE_NAME = "com.heroshrine.chancegen";
 
-        private const string c_URL =
-            "https://api.github.com/repos/Heroshrine/chance-level-generator/contents/package.json?ref=upm-2022";
+        private const string c_URL_PACKAGE =
+            "https://api.github.com/repos/Heroshrine/chance-level-generator/contents/package.json";
+
+        private const string c_URL_2022_3 = "?ref=upm-2022-3";
+        private const string c_URL_6 = "?ref=upm-6";
 
         private static ListRequest s_currentRequest;
         private static bool s_listRequestFinished;
 
         static VersionChecker()
         {
-            if (EditorPrefs.HasKey(c_NEVER_KEY) || SessionState.GetBool(c_KEY, false)) return;
+            if (EditorPrefs.GetInt(c_KEY_TYPE, 0) == 2 || SessionState.GetBool(c_KEY_ASKED, false)) return;
+
+            if (!EditorPrefs.HasKey(c_KEY_TYPE))
+                EditorPrefs.SetInt(c_KEY_TYPE, 0);
 
             CheckVersion().ContinueWith(t =>
             {
@@ -87,7 +93,7 @@ namespace ChanceGen.Editor
         private static string DecodePackageContent(string json)
         {
             var encodedJson = Regex.Match(json, @"""content"":""([A-Za-z0-9+/=\\n]+)").Groups[1].Value;
-            var splitEncoded = encodedJson.Split("\\n");
+            var splitEncoded = encodedJson.Split(@"\n");
 
             var sb = new StringBuilder();
 
@@ -109,7 +115,7 @@ namespace ChanceGen.Editor
 
             var request = new HttpRequestMessage()
             {
-                RequestUri = new Uri(c_URL),
+                RequestUri = new Uri($"{c_URL_PACKAGE}{c_URL_2022_3}"),
                 Method = HttpMethod.Get
             };
 
@@ -131,8 +137,23 @@ namespace ChanceGen.Editor
         [MenuItem("Tools/ChanceGen/Check for updates")]
         private static void DisplayUpdateDialog()
         {
+            switch (EditorPrefs.GetInt(c_KEY_TYPE, 0))
+            {
+                case 0:
+                    BoxDialog();
+                    break;
+                case 1:
+                    Debug.Log("An update for the installed package chance-level-generator is available.");
+                    break;
+            }
+
+            SessionState.SetBool(c_KEY_ASKED, true);
+        }
+
+        private static void BoxDialog()
+        {
             var choice = EditorUtility.DisplayDialogComplex("Chance Level Generator Update",
-                "An update for the installed chance-level-generator package was detected. "
+                "An update for the installed package chance-level-generator was detected. "
                 + "Would you like to open the package manager now?",
                 "Yes", "Don't Notify Me of Updates", "No");
 
@@ -140,13 +161,9 @@ namespace ChanceGen.Editor
             {
                 case 0:
                     UnityEditor.PackageManager.UI.Window.Open("com.heroshrine.chancegen");
-                    SessionState.SetBool(c_KEY, true);
                     break;
                 case 1:
-                    EditorPrefs.SetBool(c_NEVER_KEY, true);
-                    break;
-                case 2:
-                    SessionState.SetBool(c_KEY, true);
+                    EditorPrefs.SetInt(c_KEY_TYPE, 2); // replace with settings provider
                     break;
             }
         }
