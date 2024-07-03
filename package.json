@@ -1,6 +1,6 @@
 {
   "name": "com.heroshrine.chancegen",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "displayName": "Chance Level Generator",
   "description": "Generates a level using a modified diffusion method, then performs a pass of rulesets inspired by Conway's Game of Life.",
   "unity": "2022.3",
