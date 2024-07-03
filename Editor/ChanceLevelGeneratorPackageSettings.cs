@@ -1,35 +1,17 @@
+using System;
 using UnityEditor;
 using UnityEngine;
-using static ChanceGen.Editor.ChanceLevelGeneratorPackageSettings;
 
 namespace ChanceGen.Editor
 {
-    internal class ChanceLevelGeneratorPackageSettings : ScriptableObject
-    {
-        public const string SETTINGS_ASSET_PATH =
-            "Packages/com.heroshrine.chancegen/Editor/ChanceLevelGeneratorSettings.asset";
-
-        public const string SETTINGS_PATH = "Project/ChanceGeneratorSettings";
-
-        internal static ChanceLevelGeneratorPackageSettings GetOrCreate()
-        {
-            var settings = AssetDatabase.LoadAssetAtPath<ChanceLevelGeneratorPackageSettings>(SETTINGS_ASSET_PATH);
-
-            if (settings != null) return settings;
-
-            settings = CreateInstance<ChanceLevelGeneratorPackageSettings>();
-            AssetDatabase.CreateAsset(settings, SETTINGS_ASSET_PATH);
-            AssetDatabase.SaveAssets();
-
-            return settings;
-        }
-
-        public UpdateAskType askUpdateType;
-    }
-
-
     internal static class ChanceLevelGeneratorPackageSettingsIMGUIRegister
     {
+        public const string SETTINGS_PATH = "Project/ChanceGeneratorSettings";
+        private const string c_KEY_SETTINGS = "chancegeneratorsettingsnotifyupdate";
+
+        public static string KeySettingFullpath =>
+            $"{c_KEY_SETTINGS}{Application.companyName}{Application.productName}";
+
         [SettingsProvider]
         public static SettingsProvider CreateSetingsProvider()
         {
@@ -38,10 +20,13 @@ namespace ChanceGen.Editor
                 label = "Chance Level Generator Settings",
                 guiHandler = _ =>
                 {
-                    var settings = new SerializedObject(ChanceLevelGeneratorPackageSettings.GetOrCreate());
-                    EditorGUILayout.PropertyField(settings.FindProperty("askUpdateType"),
-                        new GUIContent("Ask For Updates"));
-                    settings.ApplyModifiedPropertiesWithoutUndo();
+                    var setting =
+                        EditorPrefs.GetInt(KeySettingFullpath, 0);
+
+                    var newSetting = (int)(UpdateAskType)EditorGUILayout.EnumPopup((UpdateAskType)setting);
+
+                    if (newSetting != setting)
+                        EditorPrefs.SetInt(KeySettingFullpath, newSetting);
                 },
                 keywords = new[]
                     { "Chance", "Level", "Generator", "Update", "Stop", "No", "Type", "Popup", "Message", "Heroshrine" }

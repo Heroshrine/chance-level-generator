@@ -28,9 +28,11 @@ namespace ChanceGen.Editor
 
         static VersionChecker()
         {
-            var settings = ChanceLevelGeneratorPackageSettings.GetOrCreate();
+            var settings =
+                (UpdateAskType)EditorPrefs.GetInt(ChanceLevelGeneratorPackageSettingsIMGUIRegister.KeySettingFullpath,
+                    0);
 
-            if (settings.askUpdateType == UpdateAskType.Silent || SessionState.GetBool(c_KEY_ASKED, false)) return;
+            if (settings == UpdateAskType.Silent || SessionState.GetBool(c_KEY_ASKED, false)) return;
 
             CheckVersion().ContinueWith(t =>
             {
@@ -136,12 +138,14 @@ namespace ChanceGen.Editor
         [MenuItem("Tools/ChanceGen/Check for updates")]
         private static void DisplayUpdateDialog()
         {
-            var settings = ChanceLevelGeneratorPackageSettings.GetOrCreate();
+            var settings =
+                (UpdateAskType)EditorPrefs.GetInt(ChanceLevelGeneratorPackageSettingsIMGUIRegister.KeySettingFullpath,
+                    0);
 
-            switch (settings.askUpdateType)
+            switch (settings)
             {
                 case UpdateAskType.Popup:
-                    BoxDialog(settings);
+                    BoxDialog();
                     break;
                 case UpdateAskType.Debug:
                     Debug.Log("An update for the installed package chance-level-generator is available.");
@@ -154,7 +158,7 @@ namespace ChanceGen.Editor
             SessionState.SetBool(c_KEY_ASKED, true);
         }
 
-        private static void BoxDialog(ChanceLevelGeneratorPackageSettings settings)
+        private static void BoxDialog()
         {
             var choice = EditorUtility.DisplayDialogComplex("Chance Level Generator Update",
                 "An update for the installed package chance-level-generator was detected. "
@@ -167,7 +171,7 @@ namespace ChanceGen.Editor
                     UnityEditor.PackageManager.UI.Window.Open("com.heroshrine.chancegen");
                     break;
                 case 1:
-                    SettingsService.OpenProjectSettings(ChanceLevelGeneratorPackageSettings.SETTINGS_PATH);
+                    SettingsService.OpenProjectSettings(ChanceLevelGeneratorPackageSettingsIMGUIRegister.SETTINGS_PATH);
                     break;
             }
         }
