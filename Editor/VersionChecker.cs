@@ -147,7 +147,7 @@ namespace ChanceGen.Editor
                 case UpdateAskType.Popup:
                     BoxDialog();
                     break;
-                case UpdateAskType.Debug:
+                case UpdateAskType.Console:
                     Debug.Log("An update for the installed package chance-level-generator is available.");
                     break;
                 case UpdateAskType.Silent:

@@ -41,7 +41,7 @@ namespace ChanceGen.Editor
     internal enum UpdateAskType
     {
         Popup = 0,
-        Debug = 1,
+        Console = 1,
         Silent = 2
     }
 }
