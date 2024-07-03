@@ -23,7 +23,9 @@ namespace ChanceGen.Editor
                     var setting =
                         EditorPrefs.GetInt(KeySettingFullpath, 0);
 
-                    var newSetting = (int)(UpdateAskType)EditorGUILayout.EnumPopup((UpdateAskType)setting);
+                    var newSetting = (int)(UpdateAskType)EditorGUILayout.EnumPopup(
+                        new GUIContent("Update Notify Mode", "How you will be notified of updates."),
+                        (UpdateAskType)setting);
 
                     if (newSetting != setting)
                         EditorPrefs.SetInt(KeySettingFullpath, newSetting);
