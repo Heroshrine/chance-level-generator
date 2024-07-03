@@ -12,10 +12,9 @@ using UnityEngine;
 namespace ChanceGen.Editor
 {
     [InitializeOnLoad]
-    public sealed class VersionChecker
+    internal sealed class VersionChecker
     {
         private const string c_KEY_ASKED = "chancegenversioncheckingupm";
-        private const string c_KEY_TYPE = "chancegenversioncheckingupm-type";
         private const string c_PACKAGE_NAME = "com.heroshrine.chancegen";
 
         private const string c_URL_PACKAGE =
@@ -29,10 +28,9 @@ namespace ChanceGen.Editor
 
         static VersionChecker()
         {
-            if (EditorPrefs.GetInt(c_KEY_TYPE, 0) == 2 || SessionState.GetBool(c_KEY_ASKED, false)) return;
+            var settings = ChanceLevelGeneratorPackageSettings.GetOrCreate();
 
-            if (!EditorPrefs.HasKey(c_KEY_TYPE))
-                EditorPrefs.SetInt(c_KEY_TYPE, 0);
+            if (settings.askUpdateType == UpdateAskType.Silent || SessionState.GetBool(c_KEY_ASKED, false)) return;
 
             CheckVersion().ContinueWith(t =>
             {
@@ -137,20 +135,25 @@ namespace ChanceGen.Editor
         [MenuItem("Tools/ChanceGen/Check for updates")]
         private static void DisplayUpdateDialog()
         {
-            switch (EditorPrefs.GetInt(c_KEY_TYPE, 0))
+            var settings = ChanceLevelGeneratorPackageSettings.GetOrCreate();
+
+            switch (settings.askUpdateType)
             {
-                case 0:
-                    BoxDialog();
+                case UpdateAskType.Popup:
+                    BoxDialog(settings);
                     break;
-                case 1:
+                case UpdateAskType.Debug:
                     Debug.Log("An update for the installed package chance-level-generator is available.");
+                    break;
+                case UpdateAskType.Silent:
+                default:
                     break;
             }
 
             SessionState.SetBool(c_KEY_ASKED, true);
         }
 
-        private static void BoxDialog()
+        private static void BoxDialog(ChanceLevelGeneratorPackageSettings settings)
         {
             var choice = EditorUtility.DisplayDialogComplex("Chance Level Generator Update",
                 "An update for the installed package chance-level-generator was detected. "
@@ -163,7 +166,7 @@ namespace ChanceGen.Editor
                     UnityEditor.PackageManager.UI.Window.Open("com.heroshrine.chancegen");
                     break;
                 case 1:
-                    EditorPrefs.SetInt(c_KEY_TYPE, 2); // replace with settings provider
+                    SettingsService.OpenProjectSettings(ChanceLevelGeneratorPackageSettings.SETTINGS_PATH);
                     break;
             }
         }
