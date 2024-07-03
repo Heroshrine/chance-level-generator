@@ -7,7 +7,7 @@ namespace ChanceGen.Editor
     internal class ChanceLevelGeneratorPackageSettings : ScriptableObject
     {
         public const string SETTINGS_ASSET_PATH =
-            "Packages/com.heroshrine.chancegen/Edit/ChanceLevelGeneratorSettings.asset";
+            "Packages/com.heroshrine.chancegen/Editor/ChanceLevelGeneratorSettings.asset";
 
         public const string SETTINGS_PATH = "Project/ChanceGeneratorSettings";
 
