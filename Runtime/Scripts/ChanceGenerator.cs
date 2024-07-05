@@ -311,8 +311,16 @@ namespace ChanceGen
                 if (!_removeRule.IfAnd(neighborCount, ref _random))
                     continue;
 
-                GeneratedPositions.Remove(nodePosition);
+                if (nodePosition == new NodePosition(0, 0))
+                    continue;
+
                 BlockedPositions.Add(nodePosition);
+            }
+
+            foreach (var pos in BlockedPositions)
+            {
+                if (GeneratedPositions.Contains(pos))
+                    GeneratedPositions.Remove(pos);
             }
         }
 
