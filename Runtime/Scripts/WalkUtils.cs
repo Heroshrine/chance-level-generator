@@ -73,10 +73,10 @@ namespace ChanceGen
 
                     working.nodeData.connections |= i switch
                     {
-                        0 => Connections.Down,
-                        1 => Connections.Up,
-                        2 => Connections.Right,
-                        3 => Connections.Left,
+                        0 => Connections.Up,
+                        1 => Connections.Down,
+                        2 => Connections.Left,
+                        3 => Connections.Right,
                         _ => throw new ArgumentOutOfRangeException()
                     };
 
