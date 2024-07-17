@@ -1,4 +1,5 @@
 #0.8
+
 - Added Room.cs, a class that represents a room in the level. The room contains a method that is called to close doors.
 - Added RoomRule.cs, the base class of room rules.
 - Added PlacementRule.cs, the class that determines how rooms are placed in a level.
