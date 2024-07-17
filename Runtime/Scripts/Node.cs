@@ -52,6 +52,16 @@ namespace ChanceGen
         /// </summary>
         public NodeData nodeData;
 
+        /// <summary>
+        /// If the node is consumed by room generation.
+        /// </summary>
+        public bool consumed;
+
+        /// <summary>
+        /// If the node is considered unique.
+        /// </summary>
+        public bool unique;
+
         public Node(int x, int y)
         {
             position = new NodePosition(x, y);

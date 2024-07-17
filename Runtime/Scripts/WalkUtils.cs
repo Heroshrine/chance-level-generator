@@ -50,7 +50,8 @@ namespace ChanceGen
         /// <param name="startNode">The node to walk from.</param>
         /// <param name="generatedNodes">The nodes to walk.</param>
         /// <param name="branchRequirement">How many nodes a node need to connect to to reset the walk branch value.</param>
-        public static void WalkNodesAndApplyValues(Node startNode,
+        /// <returns>The highest walk value.</returns>
+        public static int WalkNodesAndApplyValues(Node startNode,
             HashSet<Node> generatedNodes,
             int branchRequirement)
         {
@@ -61,6 +62,8 @@ namespace ChanceGen
             startNode.nodeData.walkCount = 0;
             startNode.nodeData.walkFromLastBranch = 0;
             walkQueue.Enqueue(startNode);
+
+            var _highestWalk = int.MinValue;
 
             while (walkQueue.TryDequeue(out var working))
             {
@@ -73,10 +76,10 @@ namespace ChanceGen
 
                     working.nodeData.connections |= i switch
                     {
-                        0 => Connections.Down,
-                        1 => Connections.Up,
-                        2 => Connections.Right,
-                        3 => Connections.Left,
+                        0 => Connections.Up,
+                        1 => Connections.Down,
+                        2 => Connections.Left,
+                        3 => Connections.Right,
                         _ => throw new ArgumentOutOfRangeException()
                     };
 
@@ -103,7 +106,12 @@ namespace ChanceGen
                         || found.nodeData.walkFromLastBranch > working.nodeData.walkFromLastBranch + 1)
                         found.nodeData.walkFromLastBranch = working.nodeData.walkFromLastBranch + 1;
                 }
+
+                if (working.nodeData.walkCount > _highestWalk)
+                    _highestWalk = working.nodeData.walkCount;
             }
+
+            return _highestWalk;
         }
 
         // connects islands to make the entire generated level contiguous
