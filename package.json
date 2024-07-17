@@ -1,12 +1,12 @@
 {
   "name": "com.heroshrine.chancegen",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "displayName": "Chance Level Generator",
   "description": "Generates a level using a modified diffusion method, then performs a pass of rulesets inspired by Conway's Game of Life.",
   "unity": "2022.3",
-  "documentationUrl": "TODO: ADD LATER",
-  "changelogUrl": "https://github.com/Heroshrine/chance-level-generator/blob/main/CHANGELOG.md",
-  "licensesUrl": "https://github.com/Heroshrine/chance-level-generator/blob/main/LICENSE.md",
+  "documentationUrl": "",
+  "changelogUrl": "https://raw.githubusercontent.com/Heroshrine/chance-level-generator/upm-2022-3/CHANGELOG.md",
+  "licensesUrl": "https://raw.githubusercontent.com/Heroshrine/chance-level-generator/upm-2022-3/LICENSE.md",
   "dependencies": {
     "com.unity.mathematics": "1.2.6"
   },
